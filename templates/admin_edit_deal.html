@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Edit Deal</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; }
+.top-bar.dash-top { display:flex; align-items:center; justify-content:space-between; padding:18px 32px 10px !important; background:transparent !important; border:none !important; box-shadow:none !important; gap:12px; flex-wrap:wrap; }
+.dash-top .page-title { font-size:20px; font-weight:700; color:#0f172a; margin:0 0 1px; }
+.dash-top .page-subtitle { font-size:12.5px; color:#64748b; margin:0; }
+.btn-back { display:inline-flex; align-items:center; height:38px; padding:0 14px; background:#fff; color:#475569; border:1px solid #e2e8f0; border-radius:10px; font-size:13px; font-weight:600; text-decoration:none; }
+.page-wrap { flex:1; padding:12px 32px 28px; display:flex; flex-direction:column; align-items:center; }
+.page-wrap > form.panel { width:100%; max-width:920px; }
+.panel { background:#fff; border:1px solid #e8ecf1; border-radius:12px; overflow:hidden; margin-bottom:14px; box-shadow:0 1px 2px rgba(15,23,42,0.04); }
+.panel-hd { padding:10px 16px; border-bottom:1px solid #f1f5f9; background:#fafbfc; font-size:13px; font-weight:600; }
+.panel-bd { padding:14px 16px; }
+.panel-ft { padding:10px 16px; border-top:1px solid #f1f5f9; background:#fafbfc; display:flex; gap:8px; justify-content:flex-end; }
+.sec { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.04em; margin:14px 0 8px; padding-bottom:5px; border-bottom:1px solid #f1f5f9; }
+.sec:first-child { margin-top:0; }
+.g { display:grid; grid-template-columns:repeat(3,1fr); gap:8px 10px; }
+.g .s3 { grid-column:1 / -1; }
+@media (max-width:800px) { .g { grid-template-columns:1fr 1fr; } }
+@media (max-width:480px) { .g { grid-template-columns:1fr; } }
+.fg { display:flex; flex-direction:column; gap:3px; }
+.fg label { font-size:11.5px; font-weight:600; color:#475569; }
+.fg label .r { color:#dc2626; }
+.fg input, .fg select, .fg textarea { height:36px; padding:0 9px; border:1px solid #e2e8f0; border-radius:7px; font-size:13px; font-family:inherit; color:#0f172a; width:100%; box-sizing:border-box; }
+.fg textarea { height:80px; padding:8px 9px; }
+.btn-cancel { height:34px; padding:0 12px; background:#fff; border:1px solid #e2e8f0; border-radius:7px; font-size:12.5px; font-weight:600; color:#64748b; text-decoration:none; display:inline-flex; align-items:center; }
+.btn-save { height:34px; padding:0 14px; background:#0f172a; border:none; border-radius:7px; font-size:12.5px; font-weight:600; color:#fff; cursor:pointer; font-family:inherit; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'deals' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+<header class="top-bar dash-top">
+  <div>
+    <h1 class="page-title">Edit Deal</h1>
+    <p class="page-subtitle">{{ deal.title }}</p>
+  </div>
+  <a href="{{ url_for('admin.admin_deal_detail', deal_id=deal.id) }}" class="btn-back">← Back</a>
+</header>
+<div class="page-wrap">
+<form method="POST" class="panel">
+  <div class="panel-hd">Deal details</div>
+  <div class="panel-bd">
+    <p class="sec">Basics</p>
+    <div class="g">
+      <div class="fg" style="grid-column:span 2">
+        <label>Title <span class="r">*</span></label>
+        <input type="text" name="title" required value="{{ deal.title or '' }}">
+      </div>
+      <div class="fg">
+        <label>Stage</label>
+        <select name="stage">
+          {% for s in stages %}
+          <option value="{{ s }}" {% if deal.stage==s %}selected{% endif %}>{{ stage_labels[s] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Property</label>
+        <select name="property_id">
+          <option value="">— Unlinked —</option>
+          {% for p in properties %}
+          <option value="{{ p.id }}" {% if deal.property_id==p.id %}selected{% endif %}>{{ p.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Client</label>
+        <select name="client_id">
+          <option value="">— Unlinked —</option>
+          {% for c in clients %}
+          <option value="{{ c.id }}" {% if deal.client_id==c.id %}selected{% endif %}>{{ c.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Agent</label>
+        <select name="agent_id">
+          <option value="">— Unassigned —</option>
+          {% for a in agents %}
+          <option value="{{ a.id }}" {% if deal.agent_id==a.id %}selected{% endif %}>{{ a.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Deal value</label>
+        <input type="number" name="value" step="any" min="0" value="{{ deal.value or '' }}">
+      </div>
+      <div class="fg">
+        <label>Commission rate (%)</label>
+        <input type="number" name="commission_rate" step="0.1" min="0" value="{{ deal.commission_rate or 2.5 }}">
+      </div>
+      <div class="fg">
+        <label>Expected close</label>
+        <input type="date" name="expected_close" value="{{ deal.expected_close or '' }}">
+      </div>
+      <div class="fg s3">
+        <label>Notes</label>
+        <textarea name="notes">{{ deal.notes or '' }}</textarea>
+      </div>
+    </div>
+  </div>
+  <div class="panel-ft">
+    <a href="{{ url_for('admin.admin_deal_detail', deal_id=deal.id) }}" class="btn-cancel">Cancel</a>
+    <button type="submit" class="btn-save">Save changes</button>
+  </div>
+</form>
+</div>
+</main>
+</div>
+</body>
+</html>

@@ -2,42 +2,229 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Estacle | Admin – Add Deal</title>
+<title>Estacle | Add Deal</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+html, body { height: 100%; }
+.main-content { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 0 !important; background: transparent !important; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important; background: transparent !important;
+  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap; flex-shrink: 0;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; letter-spacing: -0.02em; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
+.btn-back {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  background: #fff; color: #475569; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.page-wrap {
+  flex: 1; padding: 12px 32px 28px; width: 100%; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center;
+}
+.page-wrap > form.panel, .page-wrap > .panel { width: 100%; max-width: 920px; }
+.panel {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px; overflow: hidden;
+  display: flex; flex-direction: column; margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+}
+.panel-hd {
+  padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc;
+  font-size: 13px; font-weight: 600; color: #0f172a;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.panel-hd span { color: #94a3b8; font-weight: 500; font-size: 11.5px; }
+.panel-bd { padding: 14px 16px; }
+.panel-ft {
+  padding: 10px 16px; border-top: 1px solid #f1f5f9; background: #fafbfc;
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+.sec {
+  font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;
+  letter-spacing: 0.04em; margin: 14px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #f1f5f9;
+}
+.sec:first-child { margin-top: 0; }
+.g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px; }
+.g .s2 { grid-column: span 2; }
+.g .s3 { grid-column: 1 / -1; }
+@media (max-width: 800px) { .g { grid-template-columns: 1fr 1fr; } .g .s2 { grid-column: span 1; } }
+@media (max-width: 480px) { .g { grid-template-columns: 1fr; } }
+.fg { display: flex; flex-direction: column; gap: 3px; }
+.fg label { font-size: 11.5px; font-weight: 600; color: #475569; }
+.fg label .r { color: #dc2626; }
+.fg input, .fg select, .fg textarea {
+  height: 36px; padding: 0 9px; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 13px; font-family: inherit; color: #0f172a; outline: none; width: 100%; box-sizing: border-box;
+}
+.fg textarea { height: 80px; padding: 8px 9px; resize: vertical; }
+.fg input:focus, .fg select:focus, .fg textarea:focus { border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+.btn-cancel {
+  height: 34px; padding: 0 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #64748b; text-decoration: none; display: inline-flex; align-items: center;
+}
+.btn-save {
+  height: 34px; padding: 0 14px; background: #0f172a; border: none; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; font-family: inherit;
+}
+.format-box {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 10px 12px; color: #334155; white-space: pre-wrap; margin: 0 0 10px; user-select: all;
+}
+.rules { margin: 0 0 12px; padding-left: 18px; color: #64748b; font-size: 12.5px; }
+.rules li { margin-bottom: 3px; }
+.import-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.import-row input[type="file"] { font-size: 12.5px; }
+</style>
 </head>
 <body>
 <div class="app-layout">
-{% set active = 'add_deal' %}
+{% set active = 'deals' %}
 {% include 'partials/admin_sidebar.html' %}
 <main class="main-content">
-<header class="top-bar">
-<div><h1 class="page-title">Add Deal</h1><p class="page-subtitle">Start a new deal in the pipeline</p></div>
-
+<header class="top-bar dash-top">
+  <div>
+    <h1 class="page-title">Add Deal</h1>
+    <p class="page-subtitle">Track offer value, stage, and expected commission</p>
+  </div>
+  <a href="{{ url_for('admin.admin_deals') }}" class="btn-back">← Back to deals</a>
 </header>
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-{% endwith %}
 
-<div class="form-page-hero"><h2>New deal</h2><p>Track offer value, stage, and expected commission.</p></div>
-<div class="panel form-panel"><form method="POST" class="admin-form">
-<div class="form-group"><label>Title *</label><input name="title" required placeholder="e.g. 123 Main St – Smith offer"></div>
-<div class="form-row">
-<div class="form-group"><label>Property</label><select name="property_id"><option value="">—</option>{% for p in properties %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}</select></div>
-<div class="form-group"><label>Client</label><select name="client_id"><option value="">—</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.full_name }}</option>{% endfor %}</select></div>
-</div>
-<div class="form-row">
-<div class="form-group"><label>Agent</label><select name="agent_id"><option value="">—</option>{% for a in agents %}<option value="{{ a.id }}">{{ a.full_name }}</option>{% endfor %}</select></div>
-<div class="form-group"><label>Stage</label><select name="stage"><option value="offer">Offer</option><option value="negotiation">Negotiation</option><option value="under_contract">Under contract</option><option value="closed">Closed</option></select></div>
-</div>
-<div class="form-row">
-<div class="form-group"><label>Deal value ($)</label><input type="number" name="value" step="0.01" placeholder="500000"></div>
-<div class="form-group"><label>Commission rate (%)</label><input type="number" name="commission_rate" step="0.1" value="2.5"></div>
-</div>
-<div class="form-group"><label>Expected close</label><input type="date" name="expected_close"></div>
-<div class="form-group"><label>Notes</label><textarea name="notes"></textarea></div>
-<div class="form-actions"><button class="btn-primary" type="submit">Create Deal</button><a href="{{ url_for('admin.admin_deals') }}" class="btn-secondary">Cancel</a></div>
-</form></div>
+<div class="page-wrap">
+<form method="POST" class="panel">
+  <div class="panel-hd">Deal details <span>Required fields marked *</span></div>
+  <div class="panel-bd">
+    <p class="sec">Basics</p>
+    <div class="g">
+      <div class="fg s2">
+        <label>Title <span class="r">*</span></label>
+        <input type="text" name="title" required placeholder="e.g. Vesu 3BHK – Sharma offer">
+      </div>
+      <div class="fg">
+        <label>Deal type</label>
+        <select name="deal_type">
+          <option value="">— Select —</option>
+          <option value="Sale">Sale</option>
+          <option value="Rent">Rent</option>
+          <option value="Lease">Lease</option>
+          <option value="Resale">Resale</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Property</label>
+        <select name="property_id">
+          <option value="">— Unlinked —</option>
+          {% for p in properties %}
+          <option value="{{ p.id }}">{{ p.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Client</label>
+        <select name="client_id">
+          <option value="">— Unlinked —</option>
+          {% for c in clients %}
+          <option value="{{ c.id }}">{{ c.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Agent</label>
+        <select name="agent_id">
+          <option value="">— Unassigned —</option>
+          {% for a in agents %}
+          <option value="{{ a.id }}">{{ a.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
 
+    <p class="sec">Value & pipeline</p>
+    <div class="g">
+      <div class="fg">
+        <label>Deal value</label>
+        <input type="number" name="value" step="any" min="0" placeholder="5000000">
+      </div>
+      <div class="fg">
+        <label>Commission rate (%)</label>
+        <input type="number" name="commission_rate" step="0.1" min="0" value="2.5">
+      </div>
+      <div class="fg">
+        <label>Stage</label>
+        <select name="stage">
+          {% for s in stages %}
+          <option value="{{ s }}">{{ stage_labels[s] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Expected close</label>
+        <input type="date" name="expected_close">
+      </div>
+      <div class="fg">
+        <label>Priority</label>
+        <select name="priority">
+          <option value="">— Select —</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Win probability</label>
+        <select name="probability">
+          <option value="">— Select —</option>
+          <option value="25%">25%</option>
+          <option value="50%">50%</option>
+          <option value="75%">75%</option>
+          <option value="90%">90%</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Source</label>
+        <select name="source">
+          <option value="">— Select —</option>
+          <option value="Website">Website</option>
+          <option value="Referral">Referral</option>
+          <option value="Portal">Portal</option>
+          <option value="Walk-in">Walk-in</option>
+          <option value="Campaign">Campaign</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="fg s3">
+        <label>Notes</label>
+        <textarea name="notes" placeholder="Terms, contingencies, next steps…"></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="panel-ft">
+    <a href="{{ url_for('admin.admin_deals') }}" class="btn-cancel">Cancel</a>
+    <button type="submit" class="btn-save">Save deal</button>
+  </div>
+</form>
+
+<div class="panel" id="import">
+  <div class="panel-hd">Import deals <span>CSV · Excel</span></div>
+  <div class="panel-bd">
+    <p class="sec" style="margin-top:0">Format (header row required)</p>
+    <div class="format-box">title,stage,value,commission_rate,expected_close,property,client,agent,agent_email,notes
+Vesu 3BHK Sharma,offer,8500000,2.5,2026-12-15,Skyline Residences,John Doe,Agent One,agent@estacle.com,Initial offer
+Office Park lease,negotiation,120000,5,,Tech Park Wing B,Sarah Khan,,,Follow-up Friday</div>
+    <ul class="rules">
+      <li><strong>title</strong> is required</li>
+      <li>stage: offer · negotiation · under_contract · closed · lost</li>
+      <li>property / client / agent matched by name when possible; agent_email preferred for agent</li>
+      <li>value and commission_rate are optional numbers</li>
+    </ul>
+    <form method="POST" action="{{ url_for('admin.admin_import_deals') }}" enctype="multipart/form-data" class="import-row">
+      <input type="file" name="import_file" accept=".csv,.xlsx,.xls" required>
+      <button type="submit" class="btn-save">Import CSV / Excel</button>
+    </form>
+  </div>
+</div>
+</div>
 </main>
 </div>
 </body>

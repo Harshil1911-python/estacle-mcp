@@ -23,7 +23,7 @@ html, body { height: 100%; }
   flex: 1; padding: 12px 32px 28px; width: 100%; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center;
 }
-.page-wrap > form.panel { width: 100%; max-width: 860px; }
+.page-wrap > form.panel, .page-wrap > .panel { width: 100%; max-width: 920px; }
 .panel {
   background: #fff; border: 1px solid #e8ecf1; border-radius: 12px; overflow: hidden;
   display: flex; flex-direction: column; margin-bottom: 14px;
@@ -57,7 +57,7 @@ html, body { height: 100%; }
   height: 36px; padding: 0 9px; border: 1px solid #e2e8f0; border-radius: 7px;
   font-size: 13px; font-family: inherit; color: #0f172a; outline: none; width: 100%; box-sizing: border-box;
 }
-.fg textarea { height: 72px; padding: 8px 9px; resize: vertical; }
+.fg textarea { height: 80px; padding: 8px 9px; resize: vertical; }
 .fg input:focus, .fg select:focus, .fg textarea:focus { border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
 .btn-cancel {
   height: 34px; padding: 0 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 7px;
@@ -67,6 +67,15 @@ html, body { height: 100%; }
   height: 34px; padding: 0 14px; background: #0f172a; border: none; border-radius: 7px;
   font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; font-family: inherit;
 }
+.format-box {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 10px 12px; color: #334155; white-space: pre-wrap; margin: 0 0 10px; user-select: all;
+}
+.rules { margin: 0 0 12px; padding-left: 18px; color: #64748b; font-size: 12.5px; }
+.rules li { margin-bottom: 3px; }
+.import-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.import-row input[type="file"] { font-size: 12.5px; }
 </style>
 </head>
 <body>
@@ -77,7 +86,7 @@ html, body { height: 100%; }
 <header class="top-bar dash-top">
   <div>
     <h1 class="page-title">Add Lead</h1>
-    <p class="page-subtitle">Capture a new inquiry into the pipeline</p>
+    <p class="page-subtitle">Capture a detailed inquiry into the Estacle pipeline</p>
   </div>
   <a href="{{ url_for('admin.admin_leads') }}" class="btn-back">← Back to leads</a>
 </header>
@@ -93,12 +102,16 @@ html, body { height: 100%; }
         <input type="text" name="full_name" required placeholder="Lead full name">
       </div>
       <div class="fg">
-        <label>Phone</label>
-        <input type="text" name="phone" placeholder="+91 …">
+        <label>Company / organization</label>
+        <input type="text" name="company" placeholder="Optional company">
       </div>
-      <div class="fg s2">
+      <div class="fg">
         <label>Email</label>
         <input type="email" name="email" placeholder="name@email.com">
+      </div>
+      <div class="fg">
+        <label>Phone</label>
+        <input type="text" name="phone" placeholder="+91 …">
       </div>
       <div class="fg">
         <label>Source</label>
@@ -106,22 +119,58 @@ html, body { height: 100%; }
           <option value="website">Website</option>
           <option value="referral">Referral</option>
           <option value="walkin">Walk-in</option>
-          <option value="social">Social</option>
+          <option value="social">Social media</option>
+          <option value="portal">Property portal</option>
+          <option value="campaign">Campaign / ads</option>
+          <option value="event">Event</option>
           <option value="other">Other</option>
         </select>
       </div>
     </div>
 
-    <p class="sec">Interest & pipeline</p>
+    <p class="sec">Requirement</p>
     <div class="g">
       <div class="fg">
-        <label>Interest</label>
-        <input type="text" name="interest" placeholder="Buy / Rent / 3BHK / Area">
+        <label>Looking to</label>
+        <select name="listing_type">
+          <option value="">— Select —</option>
+          <option value="Buy">Buy</option>
+          <option value="Rent">Rent</option>
+          <option value="Invest">Invest</option>
+          <option value="Sell">Sell</option>
+        </select>
       </div>
       <div class="fg">
-        <label>Budget</label>
-        <input type="number" name="budget" min="0" step="any" placeholder="Max budget">
+        <label>Interest / property type</label>
+        <input type="text" name="interest" placeholder="3BHK, Villa, Office…">
       </div>
+      <div class="fg">
+        <label>Budget (max)</label>
+        <input type="number" name="budget" min="0" step="any" placeholder="e.g. 8500000">
+      </div>
+      <div class="fg">
+        <label>Preferred city</label>
+        <input type="text" name="preferred_city" placeholder="Mumbai, Surat…">
+      </div>
+      <div class="fg s2">
+        <label>Preferred area / address</label>
+        <input type="text" name="address" placeholder="Neighbourhood or locality">
+      </div>
+      <div class="fg">
+        <label>Timeline</label>
+        <select name="timeline">
+          <option value="">— Select —</option>
+          <option value="Immediate">Immediate</option>
+          <option value="1-3 months">1–3 months</option>
+          <option value="3-6 months">3–6 months</option>
+          <option value="6+ months">6+ months</option>
+          <option value="Just browsing">Just browsing</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="sec">Pipeline</p>
+    <div class="g">
       <div class="fg">
         <label>Status</label>
         <select name="status">
@@ -141,7 +190,7 @@ html, body { height: 100%; }
       </div>
       <div class="fg s3">
         <label>Notes</label>
-        <textarea name="notes" placeholder="Requirements, timeline, preferences…"></textarea>
+        <textarea name="notes" placeholder="Requirements, budget flexibility, decision makers, follow-up notes…"></textarea>
       </div>
     </div>
   </div>
@@ -150,6 +199,26 @@ html, body { height: 100%; }
     <button type="submit" class="btn-save">Save lead</button>
   </div>
 </form>
+
+<div class="panel" id="import">
+  <div class="panel-hd">Import leads <span>CSV · Excel</span></div>
+  <div class="panel-bd">
+    <p class="sec" style="margin-top:0">Format (header row required)</p>
+    <div class="format-box" id="formatBox">full_name,email,phone,status,source,budget,interest,preferred_city,address,notes,agent_email
+John Doe,john@email.com,+919800000000,lead,Website,5000000,3BHK Buy,Mumbai,Andheri West,,agent@estacle.com
+Sarah Khan,sarah@email.com,+919811122233,nurturing,Referral,12000000,Villa,Pune,,,</div>
+    <ul class="rules">
+      <li><strong>full_name</strong> is required</li>
+      <li>status: lead · contacted · nurturing · closed · lost</li>
+      <li>budget optional number · agent_email optional (must match an existing agent/admin)</li>
+      <li>Imports into the same pipeline as the Kanban (clients table)</li>
+    </ul>
+    <form method="POST" action="{{ url_for('admin.admin_import_leads') }}" enctype="multipart/form-data" class="import-row">
+      <input type="file" name="import_file" accept=".csv,.xlsx,.xls" required>
+      <button type="submit" class="btn-save">Import CSV / Excel</button>
+    </form>
+  </div>
+</div>
 </div>
 </main>
 </div>

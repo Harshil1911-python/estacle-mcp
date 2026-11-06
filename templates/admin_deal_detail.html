@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Deal Detail</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important; background: transparent !important;
+  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-export, .btn-create, .btn-danger {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; font-family: inherit;
+}
+.btn-export { background: #fff; color: #334155; border: 1px solid #e2e8f0; }
+.btn-create { background: #0f172a; color: #fff; }
+.btn-danger { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.page-wrap { padding: 12px 32px 28px; max-width: 900px; }
+.card {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04); padding: 20px 22px;
+}
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
+@media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+.field label { display: block; font-size: 11.5px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 4px; }
+.field .val { font-size: 14.5px; color: #0f172a; font-weight: 600; }
+.badge {
+  display: inline-flex; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 6px;
+  background: #f1f5f9; color: #475569; text-transform: capitalize;
+}
+.notes { margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
+.notes p { margin: 0; color: #334155; font-size: 13.5px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'deals' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+  <header class="top-bar dash-top">
+    <div>
+      <h1 class="page-title">{{ deal.title }}</h1>
+      <p class="page-subtitle">Deal #{{ deal.id }} · {{ stage_labels.get(deal.stage, deal.stage) }}</p>
+    </div>
+    <div class="top-actions">
+      <a href="{{ url_for('admin.admin_deals') }}" class="btn-export">All deals</a>
+      <a href="{{ url_for('admin.admin_edit_deal', deal_id=deal.id) }}" class="btn-create">Edit</a>
+      <form method="POST" action="{{ url_for('admin.admin_delete_deal', deal_id=deal.id) }}" style="margin:0" onsubmit="return confirm('Delete this deal?');">
+        <button type="submit" class="btn-danger">Delete</button>
+      </form>
+    </div>
+  </header>
+  <div class="page-wrap">
+    <div class="card">
+      <div class="grid">
+        <div class="field"><label>Stage</label><div class="val"><span class="badge">{{ stage_labels.get(deal.stage, deal.stage) }}</span></div></div>
+        <div class="field"><label>Value</label><div class="val">{{ format_money(deal.value or 0, currency) }}</div></div>
+        <div class="field"><label>Commission</label><div class="val">{{ deal.commission_rate or 0 }}% → {{ format_money(deal.commission_amount or 0, currency) }}</div></div>
+        <div class="field"><label>Expected close</label><div class="val">{{ deal.expected_close or '—' }}</div></div>
+        <div class="field"><label>Property</label><div class="val">{{ deal.property_title or '—' }}</div></div>
+        <div class="field"><label>Client</label><div class="val">{{ deal.client_name or '—' }}</div></div>
+        <div class="field"><label>Agent</label><div class="val">{{ deal.agent_name or '—' }}</div></div>
+        <div class="field"><label>Updated</label><div class="val">{{ deal.updated_at or deal.created_at or '—' }}</div></div>
+      </div>
+      {% if deal.notes %}
+      <div class="notes">
+        <label style="font-size:11.5px;font-weight:600;color:#64748b;text-transform:uppercase">Notes</label>
+        <p>{{ deal.notes }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</main>
+</div>
+</body>
+</html>

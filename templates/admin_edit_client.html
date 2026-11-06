@@ -114,8 +114,8 @@ html, body { height: 100%; }
       <div class="fg">
         <label>Status</label>
         <select name="status">
-          {% for s in ['lead','contacted','qualified','negotiation','closed','lost'] %}
-          <option value="{{ s }}" {% if client.status == s %}selected{% endif %}>{{ s|capitalize }}</option>
+          {% for s in ['lead','contacted','nurturing','closed','lost'] %}
+          <option value="{{ s }}" {% if client.status == s or (s == 'nurturing' and client.status in ['qualified','negotiation']) %}selected{% endif %}>{{ s|capitalize }}</option>
           {% endfor %}
         </select>
       </div>

@@ -1,51 +1,194 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Estacle | Admin – Deals Pipeline</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | All Deals</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important; background: transparent !important;
+  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; letter-spacing: -0.02em; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
+.top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn-export {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  background: #fff; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.btn-export:hover { background: #f8fafc; }
+.btn-create {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 16px;
+  background: #0f172a; color: #fff; border-radius: 10px; font-size: 13px;
+  font-weight: 600; text-decoration: none; border: none;
+}
+.btn-create:hover { background: #1e293b; color: #fff; }
+.page-wrap { padding: 12px 32px 28px; }
+.stat-row {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px;
+}
+@media (max-width: 1100px) { .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+a.stat-card.kpi-soft {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  padding: 14px 16px; text-decoration: none; display: block;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+}
+a.stat-card.kpi-soft:hover { border-color: #c7d2fe; }
+a.stat-card.kpi-soft.active-filter {
+  border-color: #c7d2fe; box-shadow: 0 0 0 3px rgba(79,70,229,0.08);
+}
+.kpi-soft .kpi-label { font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 6px; }
+.kpi-soft .kpi-value { font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.03em; }
+.panel-card {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04); overflow: hidden;
+}
+.panel-toolbar {
+  padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.panel-toolbar input, .panel-toolbar select {
+  height: 36px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 9px;
+  font-size: 13px; font-family: inherit; background: #fff; color: #0f172a;
+}
+.panel-toolbar input { min-width: 180px; flex: 1; max-width: 260px; }
+.btn-filter {
+  height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #e2e8f0;
+  background: #fff; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer;
+  font-family: inherit; text-decoration: none; display: inline-flex; align-items: center;
+}
+.table-wrap { overflow-x: auto; }
+table.deals-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.deals-table th, .deals-table td {
+  padding: 12px 14px; text-align: left; border-bottom: 1px solid #f1f5f9; vertical-align: middle;
+}
+.deals-table th {
+  background: #fafbfc; font-size: 11.5px; font-weight: 700; color: #64748b;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.deals-table tbody tr:hover { background: #f8fafc; }
+.actions-cell { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn-sm {
+  font-size: 12px; font-weight: 600; text-decoration: none; background: none; border: none;
+  cursor: pointer; font-family: inherit; padding: 0; color: #4f46e5;
+}
+.btn-sm.danger { color: #b91c1c; }
+.empty { text-align: center; color: #94a3b8; padding: 28px 14px; }
+.stage-select {
+  height: 32px; padding: 0 8px; border: 1px solid #e2e8f0; border-radius: 8px;
+  font-size: 12px; font-family: inherit; background: #fff; color: #0f172a;
+}
+</style>
 </head>
 <body>
 <div class="app-layout">
 {% set active = 'deals' %}
 {% include 'partials/admin_sidebar.html' %}
 <main class="main-content">
-<header class="top-bar">
-<div><h1 class="page-title">Deals Pipeline</h1><p class="page-subtitle">Offers through closed deals</p></div>
-<a href="{{ url_for('admin.admin_export_deals') }}" class="btn-secondary">Export CSV</a>
-                <a href="{{ url_for('admin.admin_add_deal') }}" class="btn-primary">Add Deal</a>
-</header>
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-{% endwith %}
+  <header class="top-bar dash-top">
+    <div>
+      <h1 class="page-title">All Deals</h1>
+      <p class="page-subtitle">Every deal in one place · pipeline stays on the board</p>
+    </div>
+    <div class="top-actions">
+      <a href="{{ url_for('admin.admin_deals_pipeline') }}" class="btn-export">Pipeline</a>
+      <a href="{{ url_for('admin.admin_export_deals') }}" class="btn-export">Export CSV</a>
+      <a href="{{ url_for('admin.admin_add_deal') }}#import" class="btn-export">Import</a>
+      <a href="{{ url_for('admin.admin_add_deal') }}" class="btn-create">+ Add Deal</a>
+    </div>
+  </header>
 
-<div class="panel full"><div class="table-wrap"><table>
-<thead><tr><th>Title</th><th>Property</th><th>Client</th><th>Agent</th><th>Value</th><th>Commission</th><th>Stage</th><th>Close</th><th>Action</th></tr></thead>
-<tbody>
-{% for d in deals %}
-<tr>
-<td>{{ d.title }}</td>
-<td>{{ d.property_title or '—' }}</td>
-<td>{{ d.client_name or '—' }}</td>
-<td>{{ d.agent_name or '—' }}</td>
-<td>${{ "%.0f"|format(d.value or 0) }}</td>
-<td>{{ d.commission_rate }}% → ${{ "%.0f"|format((d.value or 0) * (d.commission_rate or 0) / 100) }}</td>
-<td>
-<form method="POST" action="{{ url_for('admin.admin_deal_stage', deal_id=d.id) }}" style="display:inline">
-<select name="stage" class="status-select" onchange="this.form.submit()">
-<option value="offer" {% if d.stage=='offer' %}selected{% endif %}>Offer</option>
-<option value="negotiation" {% if d.stage=='negotiation' %}selected{% endif %}>Negotiation</option>
-<option value="under_contract" {% if d.stage=='under_contract' %}selected{% endif %}>Under contract</option>
-<option value="closed" {% if d.stage=='closed' %}selected{% endif %}>Closed</option>
-<option value="lost" {% if d.stage=='lost' %}selected{% endif %}>Lost</option>
-</select></form>
-</td>
-<td>{{ d.expected_close or '—' }}</td>
-<td><form method="POST" action="{{ url_for('admin.admin_delete_deal', deal_id=d.id) }}" style="display:inline" onsubmit="return confirm('Delete?')"><button class="btn-sm btn-danger" type="submit">Delete</button></form></td>
-</tr>
-{% else %}<tr><td colspan="9" class="empty">No deals yet</td></tr>{% endfor %}
-</tbody></table></div></div>
+  <div class="page-wrap">
+    <div class="stat-row">
+      <a href="{{ url_for('admin.admin_deals') }}" class="stat-card kpi-soft {% if not stage_filter %}active-filter{% endif %}">
+        <div class="kpi-label">Total</div>
+        <div class="kpi-value">{{ stats.total }}</div>
+      </a>
+      {% for st in stages %}
+      <a href="{{ url_for('admin.admin_deals', stage=st, q=q, agent_id=agent_id) }}" class="stat-card kpi-soft {% if stage_filter==st %}active-filter{% endif %}">
+        <div class="kpi-label">{{ stage_labels[st] }}</div>
+        <div class="kpi-value">{{ stats[st] }}</div>
+      </a>
+      {% endfor %}
+    </div>
 
+    <div class="panel-card">
+      <div class="panel-toolbar">
+        <form method="GET" action="{{ url_for('admin.admin_deals') }}" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%">
+          <input type="search" name="q" value="{{ q }}" placeholder="Search Deals">
+          <select name="stage">
+            <option value="">All stages</option>
+            {% for s in stages %}
+            <option value="{{ s }}" {% if stage_filter==s %}selected{% endif %}>{{ stage_labels[s] }}</option>
+            {% endfor %}
+          </select>
+          <select name="agent_id">
+            <option value="">All agents</option>
+            {% for a in agents %}
+            <option value="{{ a.id }}" {% if agent_id==a.id|string %}selected{% endif %}>{{ a.full_name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn-filter">Filter</button>
+          {% if active_filters %}
+          <a href="{{ url_for('admin.admin_deals') }}" class="btn-filter">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+      <div class="table-wrap">
+        <table class="deals-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Property</th>
+              <th>Client</th>
+              <th>Agent</th>
+              <th>Value</th>
+              <th>Commission</th>
+              <th>Stage</th>
+              <th>Close</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in deals %}
+            <tr>
+              <td><strong><a href="{{ url_for('admin.admin_deal_detail', deal_id=d.id) }}" style="color:inherit;text-decoration:none">{{ d.title }}</a></strong></td>
+              <td>{{ d.property_title or '—' }}</td>
+              <td>{{ d.client_name or '—' }}</td>
+              <td>{{ d.agent_name or '—' }}</td>
+              <td>{{ format_money(d.value or 0, currency) }}</td>
+              <td>{{ d.commission_rate or 0 }}% → {{ format_money(d.commission_amount or 0, currency) }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.admin_deal_stage', deal_id=d.id) }}" style="margin:0">
+                  <select name="stage" class="stage-select" onchange="this.form.submit()">
+                    {% for s in stages %}
+                    <option value="{{ s }}" {% if d.stage==s %}selected{% endif %}>{{ stage_labels[s] }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
+              <td>{{ d.expected_close or '—' }}</td>
+              <td class="actions-cell">
+                <a class="btn-sm" href="{{ url_for('admin.admin_deal_detail', deal_id=d.id) }}">Details</a>
+                <a class="btn-sm" href="{{ url_for('admin.admin_edit_deal', deal_id=d.id) }}">Edit</a>
+                <form method="POST" action="{{ url_for('admin.admin_delete_deal', deal_id=d.id) }}" style="margin:0" onsubmit="return confirm('Delete this deal?');">
+                  <button type="submit" class="btn-sm danger">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" class="empty">No deals yet — add one to get started</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </main>
 </div>
 </body>

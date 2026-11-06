@@ -141,6 +141,7 @@ a.stat-card.kpi-soft.active-filter { border-color: #a5b4fc; box-shadow: 0 0 0 3p
 }
 .badge-lead { background: #eff6ff; color: #1d4ed8; }
 .badge-contacted { background: #f0f9ff; color: #0369a1; }
+.badge-nurturing { background: #ecfdf5; color: #047857; }
 .badge-qualified { background: #ecfdf5; color: #047857; }
 .badge-negotiation { background: #fff7ed; color: #c2410c; }
 .badge-closed { background: #0f172a; color: #fff; }
@@ -220,15 +221,10 @@ a.stat-card.kpi-soft.active-filter { border-color: #a5b4fc; box-shadow: 0 0 0 3p
           <div class="kpi-value">{{ stats.contacted }}</div>
           <div class="kpi-sub">Reached out</div>
         </a>
-        <a href="{{ url_for('admin.admin_clients', status='qualified', view=view, q=q, agent_id=agent_id, source=source) }}" class="stat-card kpi-soft {% if status_filter=='qualified' %}active-filter{% endif %}">
-          <div class="kpi-top"><span class="kpi-label">Qualified</span></div>
-          <div class="kpi-value">{{ stats.qualified }}</div>
-          <div class="kpi-sub">Qualified</div>
-        </a>
-        <a href="{{ url_for('admin.admin_clients', status='negotiation', view=view, q=q, agent_id=agent_id, source=source) }}" class="stat-card kpi-soft {% if status_filter=='negotiation' %}active-filter{% endif %}">
-          <div class="kpi-top"><span class="kpi-label">Negotiation</span></div>
-          <div class="kpi-value">{{ stats.negotiation }}</div>
-          <div class="kpi-sub">In talks</div>
+        <a href="{{ url_for('admin.admin_clients', status='nurturing', view=view, q=q, agent_id=agent_id, source=source) }}" class="stat-card kpi-soft {% if status_filter=='nurturing' %}active-filter{% endif %}">
+          <div class="kpi-top"><span class="kpi-label">Nurturing</span></div>
+          <div class="kpi-value">{{ stats.nurturing }}</div>
+          <div class="kpi-sub">In nurture</div>
         </a>
         <a href="{{ url_for('admin.admin_clients', status='closed', view=view, q=q, agent_id=agent_id, source=source) }}" class="stat-card kpi-soft {% if status_filter=='closed' %}active-filter{% endif %}">
           <div class="kpi-top"><span class="kpi-label">Closed</span></div>
@@ -249,7 +245,7 @@ a.stat-card.kpi-soft.active-filter { border-color: #a5b4fc; box-shadow: 0 0 0 3p
             <input type="search" name="q" value="{{ q }}" placeholder="Search name, email, phone, city…">
             <select name="status">
               <option value="">All status</option>
-              {% for s in ['lead','contacted','qualified','negotiation','closed','lost'] %}
+              {% for s in ['lead','contacted','nurturing','closed','lost'] %}
               <option value="{{ s }}" {% if status_filter==s %}selected{% endif %}>{{ s|capitalize }}</option>
               {% endfor %}
             </select>

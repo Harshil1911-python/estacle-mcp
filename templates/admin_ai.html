@@ -168,6 +168,29 @@ html, body { height: 100%; overflow: hidden; }
   color: #94a3b8;
   opacity: 1;
 }
+.composer .attach {
+  height: 40px; width: 40px; border: none; border-radius: 11px;
+  background: #f1f5f9; color: #334155; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.composer .attach:hover { background: #e2e8f0; }
+.composer .attach svg { width: 20px; height: 20px; }
+.attach-preview {
+  display: flex; flex-wrap: wrap; gap: 8px; padding: 0 4px 8px;
+}
+.attach-preview .chip-file {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 4px 8px; font-size: 12px; color: #334155;
+}
+.attach-preview .chip-file img { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; }
+.attach-preview .chip-file button {
+  border: none; background: transparent; color: #94a3b8; cursor: pointer; font-size: 14px;
+}
+.ai-disclaimer {
+  text-align: center; font-size: 11.5px; color: #94a3b8;
+  padding: 6px 12px 10px;
+}
 .composer .send {
   height: 40px; min-width: 40px; padding: 0 14px; border: none; border-radius: 11px;
   background: #0f172a; color: #fff; font-weight: 600; font-size: 13px; cursor: pointer;
@@ -209,13 +232,19 @@ html, body { height: 100%; overflow: hidden; }
     </div>
 
     <div class="composer">
+      <div class="attach-preview" id="attachPreview"></div>
       <div class="composer-inner">
-        <textarea id="input" placeholder="Ask Estacle Ai" rows="1"></textarea>
+        <button type="button" class="attach" id="btnAttach" title="Add image">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+        <textarea id="input" placeholder="Ask Estacle AI" rows="1"></textarea>
         <button type="button" class="send" id="btnSend" title="Send">
           <span>Send</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
       </div>
+      <div class="ai-disclaimer">Estacle AI can make mistakes.</div>
     </div>
   </div>
 </main>
@@ -228,6 +257,7 @@ html, body { height: 100%; overflow: hidden; }
   var watermark = document.getElementById('watermark');
   var chatId = null;
   var history = [];
+  var pendingFiles = [];
   var busy = false;
   var hasKey = {{ 'true' if settings.has_key else 'false' }};
   var hasConversation = false;
@@ -344,7 +374,7 @@ html, body { height: 100%; overflow: hidden; }
     wrap.innerHTML =
       '<div class="tag">Confirmation required</div>' +
       '<h4>Approve this CRM action?</h4>' +
-      '<div class="args">'+escapeHtml(pending.tool)+'\n'+escapeHtml(JSON.stringify(pending.arguments, null, 2))+'</div>' +
+      '<div class="args">'+escapeHtml(pending.summary || 'Please confirm this action.')+'</div>' +
       '<div class="confirm-actions">' +
         '<button type="button" class="btn-confirm yes">Confirm</button>' +
         '<button type="button" class="btn-confirm no">Cancel</button>' +
@@ -360,23 +390,50 @@ html, body { height: 100%; overflow: hidden; }
     btnSend.disabled = v;
   }
 
+  function renderAttachPreview() {
+    var el = document.getElementById('attachPreview');
+    if (!el) return;
+    if (!pendingFiles.length) { el.innerHTML = ''; return; }
+    el.innerHTML = pendingFiles.map(function(f, i){
+      return '<div class="chip-file"><img src="'+f.url+'" alt=""><span>'+escapeHtml(f.original || f.filename)+'</span>'
+        +'<button type="button" data-i="'+i+'" title="Remove">&times;</button></div>';
+    }).join('');
+    el.querySelectorAll('button').forEach(function(btn){
+      btn.onclick = function(){
+        pendingFiles.splice(parseInt(btn.getAttribute('data-i'), 10), 1);
+        renderAttachPreview();
+      };
+    });
+  }
+
   function sendMessage(text) {
     text = (text || input.value || '').trim();
-    if (!text || busy) return;
+    if ((!text && !pendingFiles.length) || busy) return;
     if (!hasKey) {
       addSystem('Add your Groq API key under Settings → Estacle AI to start.');
       return;
     }
+    if (!text && pendingFiles.length) text = 'Please use the uploaded image(s).';
     input.value = '';
-    addUser(text);
+    addUser(text + (pendingFiles.length ? ' [' + pendingFiles.length + ' image(s)]' : ''));
     history.push({ role: 'user', content: text });
+    // Keep only last 3 messages in client memory
+    if (history.length > 3) history = history.slice(-3);
+    var attachments = pendingFiles.slice();
+    pendingFiles = [];
+    renderAttachPreview();
     setBusy(true);
     addTyping();
 
     fetch('{{ url_for("admin.admin_ai_chat") }}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-      body: JSON.stringify({ message: text, chat_id: chatId, history: history.slice(0, -1) })
+      body: JSON.stringify({
+        message: text,
+        chat_id: chatId,
+        history: history.slice(0, -1).slice(-2),
+        attachments: attachments
+      })
     }).then(function(r){ return r.json().then(function(j){ return { body: j }; }); })
     .then(function(res){
       removeTyping();
@@ -389,11 +446,37 @@ html, body { height: 100%; overflow: hidden; }
       chatId = j.chat_id;
       addAssistant(j.reply || 'Done.');
       history.push({ role: 'assistant', content: j.reply || '' });
+      if (history.length > 3) history = history.slice(-3);
       if (j.pending) addConfirm(j.pending);
     }).catch(function(){
       removeTyping();
       setBusy(false);
       addSystem('Network error. Please try again.');
+    });
+  }
+
+  var btnAttach = document.getElementById('btnAttach');
+  var fileInput = document.getElementById('fileInput');
+  if (btnAttach && fileInput) {
+    btnAttach.addEventListener('click', function(){ fileInput.click(); });
+    fileInput.addEventListener('change', function(){
+      var files = Array.prototype.slice.call(fileInput.files || []);
+      fileInput.value = '';
+      files.forEach(function(file){
+        if (!file.type || file.type.indexOf('image/') !== 0) {
+          addSystem('Only image files can be uploaded.');
+          return;
+        }
+        var fd = new FormData();
+        fd.append('file', file);
+        fetch('{{ url_for("admin.admin_ai_upload") }}', { method: 'POST', body: fd })
+          .then(function(r){ return r.json(); })
+          .then(function(j){
+            if (!j.ok) { addSystem(j.error || 'Upload failed'); return; }
+            pendingFiles.push({ filename: j.filename, url: j.url, original: j.original || file.name });
+            renderAttachPreview();
+          }).catch(function(){ addSystem('Upload failed.'); });
+      });
     });
   }
 

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Estacle | Deals Pipeline</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+html, body { height: 100%; overflow: hidden; }
+.app-layout { height: 100vh; overflow: hidden; }
+.app-layout .sidebar,
+.app-layout .sidebar-overlay,
+.app-layout .mobile-topbar {
+  display: none !important;
+}
+.main-content {
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100vh !important; max-height: 100vh !important; min-height: 0 !important;
+  overflow: hidden !important; display: flex !important; flex-direction: column !important;
+  padding-bottom: 0 !important; box-sizing: border-box; background: transparent !important;
+}
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 28px 10px !important;
+  background: transparent !important; border: none !important; box-shadow: none !important;
+  gap: 12px; flex-wrap: wrap; flex-shrink: 0;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; letter-spacing: -0.02em; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
+.top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn-back {
+  display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px;
+  background: #fff; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none; margin-right: 4px;
+}
+.btn-back:hover { background: #f8fafc; color: #0f172a; }
+.btn-back svg { width: 16px; height: 16px; flex-shrink: 0; }
+.btn-export {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  background: #fff; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.btn-export:hover { background: #f8fafc; }
+.btn-create {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 16px;
+  background: #0f172a; color: #fff; border-radius: 10px; font-size: 13px;
+  font-weight: 600; text-decoration: none; border: none;
+}
+.btn-create:hover { background: #1e293b; color: #fff; }
+.page-wrap {
+  flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+  padding: 12px 28px 16px; overflow: hidden; gap: 14px; box-sizing: border-box;
+}
+.stat-row {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; flex-shrink: 0;
+}
+@media (max-width: 1100px) { .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+a.stat-card.kpi-soft {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  padding: 14px 16px; text-decoration: none; display: block;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04); min-width: 0;
+  transition: border-color 0.12s;
+}
+a.stat-card.kpi-soft:hover { border-color: #c7d2fe; }
+a.stat-card.kpi-soft.active-filter {
+  border-color: #c7d2fe; box-shadow: 0 0 0 3px rgba(79,70,229,0.08);
+}
+.kpi-soft .kpi-label { font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 6px; }
+.kpi-soft .kpi-value { font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.03em; }
+
+.board-shell {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden;
+}
+.panel-toolbar {
+  padding: 14px 16px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0; background: #fff;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.panel-toolbar input, .panel-toolbar select {
+  height: 36px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 9px;
+  font-size: 13px; font-family: inherit; background: #fff; color: #0f172a;
+}
+.panel-toolbar input { min-width: 180px; flex: 1; max-width: 280px; }
+.panel-toolbar .btn-filter {
+  height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #e2e8f0;
+  background: #fff; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; font-family: inherit;
+  text-decoration: none; display: inline-flex; align-items: center;
+}
+
+.kanban {
+  flex: 1 1 auto; min-height: 0; display: flex; gap: 12px;
+  overflow-x: hidden; overflow-y: hidden; padding: 14px 16px 16px;
+  background: #fafbfc;
+}
+.kanban-col {
+  flex: 1 1 0; min-width: 0;
+  background: #f8fafc; border: 1px solid #e8ecf1; border-radius: 12px;
+  display: flex; flex-direction: column; min-height: 0; max-height: 100%;
+}
+.kanban-col.drag-over {
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+  background: #f5f3ff;
+}
+.col-hd {
+  padding: 11px 12px; border-bottom: 1px solid #eef2f7;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0;
+  background: #fff; border-radius: 12px 12px 0 0;
+}
+.col-hd h3 {
+  margin: 0; font-size: 12px; font-weight: 700; color: #0f172a;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.col-hd-right {
+  display: inline-flex; align-items: center; gap: 6px; position: relative;
+}
+.col-count {
+  min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px;
+  background: #f1f5f9; color: #475569; font-size: 11.5px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.col-list-btn {
+  width: 26px; height: 26px; border: none; background: transparent; border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  color: #64748b; padding: 0;
+}
+.col-list-btn:hover { background: #f1f5f9; color: #0f172a; }
+.col-list-btn svg { width: 16px; height: 16px; }
+.col-menu {
+  position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 50;
+  min-width: 150px; background: #fff; border: 1px solid #e8ecf1; border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15,23,42,0.12); padding: 4px; display: none;
+}
+.col-menu.open { display: block; }
+.col-menu button, .col-menu a {
+  display: flex; width: 100%; align-items: center; gap: 8px;
+  padding: 8px 10px; border: none; background: transparent; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #334155; text-decoration: none;
+  cursor: pointer; font-family: inherit; text-align: left; box-sizing: border-box;
+}
+.col-menu button:hover, .col-menu a:hover { background: #f1f5f9; }
+.col-hd[data-stage="offer"] .col-count { background: #dbeafe; color: #1d4ed8; }
+.col-hd[data-stage="negotiation"] .col-count { background: #ffedd5; color: #c2410c; }
+.col-hd[data-stage="under_contract"] .col-count { background: #e0e7ff; color: #4338ca; }
+.col-hd[data-stage="closed"] .col-count { background: #d1fae5; color: #047857; }
+.col-hd[data-stage="lost"] .col-count { background: #fee2e2; color: #b91c1c; }
+.col-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.deal-card {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px;
+  padding: 12px; cursor: grab;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  transition: box-shadow 0.15s, transform 0.15s, opacity 0.15s;
+  user-select: none;
+}
+.deal-card:hover { border-color: #c7d2fe; }
+.deal-card:active { cursor: grabbing; }
+.deal-card.dragging { opacity: 0.5; transform: scale(0.98); }
+.deal-card h4 {
+  margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: #0f172a; line-height: 1.3;
+}
+.deal-card .meta { font-size: 12px; color: #64748b; margin-bottom: 6px; line-height: 1.4; word-break: break-word; }
+.deal-card .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.tag {
+  font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 6px;
+  background: #f1f5f9; color: #475569;
+}
+.tag.value { background: #ecfdf5; color: #047857; }
+.tag.agent { background: #eff6ff; color: #1d4ed8; }
+.deal-card .card-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9;
+}
+.deal-card .src { font-size: 11px; color: #94a3b8; font-weight: 500; }
+.deal-card .del {
+  border: none; background: transparent; color: #94a3b8; cursor: pointer;
+  font-size: 11px; font-weight: 600; font-family: inherit; padding: 2px 4px;
+}
+.deal-card .del:hover { color: #b91c1c; }
+.col-body .empty-col {
+  font-size: 12px; color: #94a3b8; text-align: center; padding: 18px 8px;
+  border: 1px dashed #e2e8f0; border-radius: 10px; background: #fff;
+}
+.toast {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(12px);
+  background: #0f172a; color: #fff; padding: 10px 18px; border-radius: 999px;
+  font-size: 13px; font-weight: 500; opacity: 0; transition: 0.22s ease; z-index: 9999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.stage-table-modal {
+  position: fixed; inset: 0; z-index: 10000; display: none;
+  align-items: center; justify-content: center; padding: 24px;
+  background: rgba(15, 23, 42, 0.45);
+}
+.stage-table-modal.show { display: flex; }
+.stage-table-panel {
+  background: #fff; border-radius: 14px; width: min(980px, 100%);
+  max-height: min(80vh, 720px); display: flex; flex-direction: column;
+  box-shadow: 0 20px 50px rgba(15,23,42,0.25); overflow: hidden;
+}
+.stage-table-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid #eef2f7; flex-shrink: 0;
+}
+.stage-table-hd h2 { margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; }
+.stage-table-close {
+  width: 32px; height: 32px; border: none; background: #f1f5f9; border-radius: 8px;
+  cursor: pointer; font-size: 18px; line-height: 1; color: #475569;
+}
+.stage-table-close:hover { background: #e2e8f0; }
+.stage-table-body { overflow: auto; padding: 0; flex: 1 1 auto; min-height: 0; }
+.stage-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.stage-table th, .stage-table td {
+  padding: 10px 14px; text-align: left; border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+.stage-table th {
+  background: #f8fafc; font-size: 11.5px; font-weight: 700; color: #64748b;
+  text-transform: uppercase; letter-spacing: 0.03em; position: sticky; top: 0;
+}
+.stage-table-empty {
+  padding: 32px; text-align: center; color: #94a3b8; font-size: 13px;
+}
+@media (max-width: 900px) {
+  .page-wrap { padding: 10px 14px 14px; }
+  .top-bar.dash-top { padding: 14px 14px 8px !important; }
+  .kanban { gap: 8px; padding: 10px 12px 12px; }
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'deals_pipeline' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+  <header class="top-bar dash-top">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="{{ url_for('admin.admin_dashboard') }}" class="btn-back" title="Back to dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        Back
+      </a>
+      <div>
+        <h1 class="page-title">Deals</h1>
+        <p class="page-subtitle">Filter In KanBan With Estacle</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a href="{{ url_for('admin.admin_deals') }}" class="btn-export">All deals</a>
+      <a href="{{ url_for('admin.admin_export_deals') }}" class="btn-export">Export all</a>
+      <a href="{{ url_for('admin.admin_add_deal') }}" class="btn-create">+ Add Deal</a>
+    </div>
+  </header>
+
+  <div class="page-wrap">
+    <div class="stat-row" id="dealStats">
+      <a href="{{ url_for('admin.admin_deals_pipeline') }}" class="stat-card kpi-soft {% if not focus %}active-filter{% endif %}">
+        <div class="kpi-label">Total</div>
+        <div class="kpi-value" data-stat="total">{{ stats.total }}</div>
+      </a>
+      {% for st in stages %}
+      <a href="{{ url_for('admin.admin_deals_pipeline', stage=st, q=q, agent_id=agent_id) }}" class="stat-card kpi-soft {% if focus==st %}active-filter{% endif %}">
+        <div class="kpi-label">{{ stage_labels[st] }}</div>
+        <div class="kpi-value" data-stat="{{ st }}">{{ stats[st] }}</div>
+      </a>
+      {% endfor %}
+    </div>
+
+    <div class="board-shell">
+      <form class="panel-toolbar" method="GET" action="{{ url_for('admin.admin_deals_pipeline') }}">
+        {% if focus %}<input type="hidden" name="stage" value="{{ focus }}">{% endif %}
+        <input type="search" name="q" value="{{ q }}" placeholder="Search Deals">
+        <select name="agent_id">
+          <option value="">All agents</option>
+          {% for a in agents %}
+          <option value="{{ a.id }}" {% if agent_id == a.id|string %}selected{% endif %}>{{ a.full_name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn-filter">Filter</button>
+        {% if q or agent_id or focus %}
+        <a href="{{ url_for('admin.admin_deals_pipeline') }}" class="btn-filter">Clear</a>
+        {% endif %}
+      </form>
+
+      <div class="kanban" id="kanban">
+        {% for col in columns %}
+        {% if not focus or focus == col.key %}
+        <div class="kanban-col" data-stage="{{ col.key }}">
+          <div class="col-hd" data-stage="{{ col.key }}">
+            <h3>{{ col.label }}</h3>
+            <div class="col-hd-right">
+              <button type="button" class="col-list-btn" data-stage="{{ col.key }}" data-label="{{ col.label }}" title="Column actions" aria-label="Column actions" aria-haspopup="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+              </button>
+              <div class="col-menu" data-menu-for="{{ col.key }}">
+                <button type="button" class="col-menu-table" data-stage="{{ col.key }}" data-label="{{ col.label }}">View as table</button>
+                <a class="col-menu-export" href="{{ url_for('admin.admin_export_deals', stage=col.key) }}">Export CSV</a>
+              </div>
+              <span class="col-count" data-count-for="{{ col.key }}">{{ col.count }}</span>
+            </div>
+          </div>
+          <div class="col-body" data-stage="{{ col.key }}">
+            {% for deal in col.deals %}
+            <div class="deal-card" draggable="true"
+                 data-id="{{ deal.id }}"
+                 data-stage="{{ deal.stage }}"
+                 data-title="{{ deal.title or '' }}"
+                 data-property="{{ deal.property_title or '' }}"
+                 data-client="{{ deal.client_name or '' }}"
+                 data-agent="{{ deal.agent_name or '' }}"
+                 data-value="{% if deal.value is not none %}{{ format_money(deal.value, currency) }}{% endif %}"
+                 data-commission="{{ deal.commission_rate or '' }}"
+                 data-close="{{ deal.expected_close or '' }}">
+              <h4>{{ deal.title }}</h4>
+              <div class="meta">
+                {% if deal.property_title %}{{ deal.property_title }}{% endif %}
+                {% if deal.property_title and deal.client_name %} · {% endif %}
+                {% if deal.client_name %}{{ deal.client_name }}{% endif %}
+                {% if not deal.property_title and not deal.client_name %}—{% endif %}
+              </div>
+              <div class="tags">
+                {% if deal.value is not none %}<span class="tag value">{{ format_money(deal.value, currency) }}</span>{% endif %}
+                {% if deal.agent_name %}<span class="tag agent">{{ deal.agent_name }}</span>{% endif %}
+                {% if deal.commission_rate %}<span class="tag">{{ deal.commission_rate }}%</span>{% endif %}
+              </div>
+              <div class="card-foot">
+                <span class="src">{{ deal.expected_close or 'No close date' }}</span>
+                <form method="POST" action="{{ url_for('admin.admin_delete_deal', deal_id=deal.id) }}" onsubmit="return confirm('Delete this deal?');" style="margin:0">
+                  <button type="submit" class="del">Remove</button>
+                </form>
+              </div>
+            </div>
+            {% else %}
+            <div class="empty-col">Drop here</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="stage-table-modal" id="stageTableModal" role="dialog" aria-modal="true" aria-labelledby="stageTableTitle">
+  <div class="stage-table-panel">
+    <div class="stage-table-hd">
+      <h2 id="stageTableTitle">Deals</h2>
+      <button type="button" class="stage-table-close" id="stageTableClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="stage-table-body" id="stageTableBody"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var dragged = null;
+  var toastEl = document.getElementById('toast');
+  var modal = document.getElementById('stageTableModal');
+  var modalTitle = document.getElementById('stageTableTitle');
+  var modalBody = document.getElementById('stageTableBody');
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(function(){ toastEl.classList.remove('show'); }, 1800);
+  }
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+  function openStageTable(stage, label){
+    var col = document.querySelector('.kanban-col[data-stage="'+stage+'"]');
+    var cards = col ? col.querySelectorAll('.deal-card') : [];
+    modalTitle.textContent = (label || stage) + ' · ' + cards.length;
+    if(!cards.length){
+      modalBody.innerHTML = '<div class="stage-table-empty">No deals in this stage</div>';
+    } else {
+      var rows = '';
+      cards.forEach(function(card){
+        rows += '<tr>'
+          + '<td>'+esc(card.getAttribute('data-title') || '—')+'</td>'
+          + '<td>'+esc(card.getAttribute('data-property') || '—')+'</td>'
+          + '<td>'+esc(card.getAttribute('data-client') || '—')+'</td>'
+          + '<td>'+esc(card.getAttribute('data-agent') || '—')+'</td>'
+          + '<td>'+esc(card.getAttribute('data-value') || '—')+'</td>'
+          + '<td>'+esc(card.getAttribute('data-commission') ? card.getAttribute('data-commission')+'%' : '—')+'</td>'
+          + '<td>'+esc(card.getAttribute('data-close') || '—')+'</td>'
+          + '</tr>';
+      });
+      modalBody.innerHTML =
+        '<table class="stage-table"><thead><tr>'
+        + '<th>Title</th><th>Property</th><th>Client</th><th>Agent</th><th>Value</th><th>Commission</th><th>Close</th>'
+        + '</tr></thead><tbody>'+rows+'</tbody></table>';
+    }
+    modal.classList.add('show');
+  }
+  function closeStageTable(){
+    modal.classList.remove('show');
+  }
+  document.querySelectorAll('.col-list-btn').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var stage = btn.getAttribute('data-stage');
+      document.querySelectorAll('.col-menu').forEach(function(m){
+        if(m.getAttribute('data-menu-for') === stage) m.classList.toggle('open');
+        else m.classList.remove('open');
+      });
+    });
+  });
+  document.querySelectorAll('.col-menu-table').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      document.querySelectorAll('.col-menu').forEach(function(m){ m.classList.remove('open'); });
+      openStageTable(btn.getAttribute('data-stage'), btn.getAttribute('data-label'));
+    });
+  });
+  document.addEventListener('click', function(){
+    document.querySelectorAll('.col-menu').forEach(function(m){ m.classList.remove('open'); });
+  });
+  document.getElementById('stageTableClose').addEventListener('click', closeStageTable);
+  modal.addEventListener('click', function(e){
+    if(e.target === modal) closeStageTable();
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && modal.classList.contains('show')) closeStageTable();
+  });
+  function refreshCounts(){
+    var total = 0;
+    document.querySelectorAll('.kanban-col').forEach(function(col){
+      var stage = col.getAttribute('data-stage');
+      var n = col.querySelectorAll('.deal-card').length;
+      total += n;
+      var badge = col.querySelector('[data-count-for="'+stage+'"]');
+      if(badge) badge.textContent = n;
+      var statEl = document.querySelector('[data-stat="'+stage+'"]');
+      if(statEl) statEl.textContent = n;
+      var body = col.querySelector('.col-body');
+      var empty = body.querySelector('.empty-col');
+      if(n === 0 && !empty){
+        var d = document.createElement('div');
+        d.className = 'empty-col';
+        d.textContent = 'Drop here';
+        body.appendChild(d);
+      } else if(n > 0 && empty){
+        empty.remove();
+      }
+    });
+    var totalEl = document.querySelector('[data-stat="total"]');
+    if(totalEl) totalEl.textContent = total;
+  }
+  document.querySelectorAll('.deal-card').forEach(function(card){
+    card.addEventListener('dragstart', function(e){
+      dragged = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.getAttribute('data-id'));
+    });
+    card.addEventListener('dragend', function(){
+      card.classList.remove('dragging');
+      document.querySelectorAll('.kanban-col').forEach(function(c){ c.classList.remove('drag-over'); });
+      dragged = null;
+    });
+  });
+  document.querySelectorAll('.kanban-col').forEach(function(col){
+    var body = col.querySelector('.col-body');
+    col.addEventListener('dragover', function(e){
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', function(e){
+      if(!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+    });
+    col.addEventListener('drop', function(e){
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if(!dragged) return;
+      var newStage = col.getAttribute('data-stage');
+      var id = dragged.getAttribute('data-id');
+      var oldStage = dragged.getAttribute('data-stage');
+      body.appendChild(dragged);
+      if(newStage === oldStage){ refreshCounts(); return; }
+      dragged.setAttribute('data-stage', newStage);
+      refreshCounts();
+      fetch('/admin/deals/stage/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ stage: newStage })
+      }).then(function(r){ return r.json(); }).then(function(data){
+        if(data && data.ok) toast('Update & Synced');
+        else toast('Could not update');
+      }).catch(function(){ toast('Network error'); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

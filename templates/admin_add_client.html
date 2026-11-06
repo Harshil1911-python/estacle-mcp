@@ -160,8 +160,7 @@ html, body { height: 100%; }
         <select name="status">
           <option value="lead">Lead</option>
           <option value="contacted">Contacted</option>
-          <option value="qualified">Qualified</option>
-          <option value="negotiation">Negotiation</option>
+          <option value="nurturing">Nurturing</option>
           <option value="closed">Closed</option>
           <option value="lost">Lost</option>
         </select>
@@ -244,10 +243,10 @@ html, body { height: 100%; }
     <p class="sec" style="margin-top:0">Format (click to select · also printed in terminal)</p>
     <div class="format-box" id="formatBox">full_name,email,phone,status,source,budget,interest,preferred_city,address,notes,agent_email
 John Doe,john@email.com,+919800000000,lead,Website,5000000,3BHK Buy,Mumbai,Andheri West,,agent@estacle.com
-Sarah Khan,sarah@email.com,+919811122233,qualified,Referral,12000000,Villa,Pune,,,</div>
+Sarah Khan,sarah@email.com,+919811122233,nurturing,Referral,12000000,Villa,Pune,,,</div>
     <ul class="rules">
       <li><strong>full_name</strong> required</li>
-      <li>status: lead · contacted · qualified · negotiation · closed · lost</li>
+      <li>status: lead · contacted · nurturing · closed · lost</li>
       <li>budget optional number · agent_email optional (must match an existing agent)</li>
       <li>Does not create dashboard logins — use Make ID above for that</li>
     </ul>
