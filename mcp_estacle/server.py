@@ -333,18 +333,17 @@ def get_property_inventory_report() -> str:
         return _err(e)
 
 
-def create_mcp_asgi_app():
+def create_mcp_asgi_app(path: str = "/"):
     """
-    Streamable HTTP ASGI app with endpoint at /mcp (Claude URL).
-    Tries MCP v2 and v1 APIs.
+    Streamable HTTP ASGI app.
+    path="/" when mounted at /mcp so Claude URL https://host/mcp works.
     """
     errors = []
-    # Prefer endpoint path /mcp at application root (not nested under another /mcp mount)
     attempts = [
-        ("streamable_http_app", {"streamable_http_path": "/mcp"}),
-        ("streamable_http_app", {"path": "/mcp"}),
-        ("http_app", {"path": "/mcp"}),
-        ("http_app", {"transport": "streamable-http", "path": "/mcp"}),
+        ("streamable_http_app", {"streamable_http_path": path}),
+        ("streamable_http_app", {"path": path}),
+        ("http_app", {"path": path}),
+        ("http_app", {"transport": "streamable-http", "path": path}),
         ("streamable_http_app", {}),
         ("http_app", {}),
         ("sse_app", {}),
