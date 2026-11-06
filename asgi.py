@@ -2,10 +2,11 @@
 Estacle ASGI entrypoint for Render / uvicorn.
 
 Routes:
-  /mcp  and  /mcp/*  → MCP Streamable HTTP (Claude connector)
-  everything else    → Flask (web UI + OAuth)
+  /mcp  and  /mcp/*  -> authenticated MCP Streamable HTTP
+  everything else   -> Flask (web UI + OAuth)
 
-Critical: do NOT let Flask handle /mcp (that caused Claude's 404).
+Unauthenticated MCP requests receive an OAuth 401 challenge. This is the
+signal Claude needs to detect the connector as requiring sign-in.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from starlette.applications import Starlette
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -40,7 +42,6 @@ ensure_oauth_tables()
 
 from mcp_estacle.server import create_mcp_asgi_app, mcp as mcp_server
 
-# MCP app registers its endpoint at /mcp (matches Claude URL exactly)
 mcp_raw = create_mcp_asgi_app(path="/mcp")
 flask_asgi = WSGIMiddleware(flask_app)
 
@@ -49,11 +50,55 @@ def _is_mcp(path: str) -> bool:
     return path == "/mcp" or path.startswith("/mcp/")
 
 
+def _public_base(scope: Scope) -> str:
+    """Return the canonical public origin used by OAuth resource metadata."""
+    configured = os.environ.get("PUBLIC_BASE_URL") or os.environ.get("RENDER_EXTERNAL_URL")
+    if configured:
+        return configured.rstrip("/")
+
+    # Local development fallback. Production deployments should set
+    # PUBLIC_BASE_URL so the challenge always points at the canonical host.
+    headers = {
+        k.decode("latin1").lower(): v.decode("latin1")
+        for k, v in (scope.get("headers") or [])
+    }
+    host = headers.get("host", "localhost:5000")
+    scheme = scope.get("scheme", "https")
+    forwarded_proto = headers.get("x-forwarded-proto")
+    if forwarded_proto in ("http", "https"):
+        scheme = forwarded_proto
+    return f"{scheme}://{host}".rstrip("/")
+
+
 class MCPAuthASGI:
-    """Wrap MCP ASGI: attach Bearer user to context; add CORS."""
+    """Require an Estacle OAuth bearer token before dispatching MCP requests."""
 
     def __init__(self, app: ASGIApp):
         self.app = app
+
+    async def _unauthorized(self, scope: Scope, send: Send):
+        base = _public_base(scope)
+        metadata_url = f"{base}/.well-known/oauth-protected-resource"
+        body = (
+            '{"error":"unauthorized",'
+            '"error_description":"Sign in with your Estacle admin or agent account."}'
+        ).encode("utf-8")
+        await send({
+            "type": "http.response.start",
+            "status": 401,
+            "headers": [
+                (b"content-type", b"application/json; charset=utf-8"),
+                (b"content-length", str(len(body)).encode("ascii")),
+                (
+                    b"www-authenticate",
+                    f'Bearer resource_metadata="{metadata_url}", scope="mcp"'.encode("latin1"),
+                ),
+                (b"access-control-allow-origin", b"*"),
+                (b"access-control-expose-headers", b"WWW-Authenticate"),
+                (b"cache-control", b"no-store"),
+            ],
+        })
+        await send({"type": "http.response.body", "body": body})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
         if scope["type"] == "http" and scope.get("method") == "OPTIONS":
@@ -65,6 +110,7 @@ class MCPAuthASGI:
                     (b"access-control-allow-methods", b"GET, POST, DELETE, OPTIONS"),
                     (b"access-control-allow-headers",
                      b"Authorization, Content-Type, Accept, Mcp-Session-Id"),
+                    (b"access-control-expose-headers", b"WWW-Authenticate, Mcp-Session-Id"),
                     (b"access-control-max-age", b"86400"),
                 ],
             })
@@ -81,14 +127,12 @@ class MCPAuthASGI:
             token = auth.split(" ", 1)[1].strip() if auth.lower().startswith("bearer ") else ""
             if token:
                 user = get_user_for_token(token)
-            if user is None and os.environ.get("MCP_INSECURE_DEV") == "1":
-                from core.crm_service import db_conn
-                with db_conn() as conn:
-                    row = conn.execute(
-                        "SELECT id, email, full_name, role, is_active FROM users "
-                        "WHERE role='admin' AND is_active=1 LIMIT 1"
-                    ).fetchone()
-                user = dict(row) if row else None
+
+            # MCP must never fall through as an anonymous session. Claude detects
+            # OAuth from this 401 + WWW-Authenticate resource_metadata challenge.
+            if scope["type"] == "http" and user is None:
+                await self._unauthorized(scope, send)
+                return
 
         set_user(user)
         try:
@@ -99,6 +143,10 @@ class MCPAuthASGI:
                     headers.append((
                         b"access-control-allow-headers",
                         b"Authorization, Content-Type, Accept, Mcp-Session-Id",
+                    ))
+                    headers.append((
+                        b"access-control-expose-headers",
+                        b"WWW-Authenticate, Mcp-Session-Id",
                     ))
                     message = {**message, "headers": headers}
                 await send(message)
@@ -127,17 +175,14 @@ async def lifespan(app: Starlette):
 
 
 class PathRouter:
-    """
-    Explicit path router — /mcp never falls through to Flask.
-    """
+    """Explicit path router — /mcp never falls through to Flask."""
 
     def __init__(self, mcp: ASGIApp, flask: ASGIApp, inner: ASGIApp):
         self.mcp = mcp
         self.flask = flask
-        self.inner = inner  # Starlette app that owns lifespan
+        self.inner = inner
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
-        # Lifespan must go to the Starlette app that defines it
         if scope["type"] == "lifespan":
             await self.inner(scope, receive, send)
             return
@@ -151,7 +196,5 @@ class PathRouter:
         await self.flask(scope, receive, send)
 
 
-# Starlette shell only for lifespan hooks
 _starlette = Starlette(routes=[], lifespan=lifespan)
-
 app = PathRouter(mcp_asgi, flask_asgi, _starlette)
