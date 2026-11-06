@@ -1,10 +1,10 @@
 """
 Estacle MCP server — Streamable HTTP, tools backed by core.crm_service.
+Compatible with MCP Python SDK v2 (MCPServer) and v1 (FastMCP).
 """
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, Optional
 
 try:
@@ -13,7 +13,7 @@ except ImportError:
     try:
         from mcp.server import MCPServer as _Server
     except ImportError:
-        from mcp.server.fastmcp import FastMCP as _Server  # mcp v1 fallback
+        from mcp.server.fastmcp import FastMCP as _Server
 
 from mcp_estacle.context import get_user
 from core import crm_service as crm
@@ -37,8 +37,6 @@ def _err(e: Exception) -> str:
     return json.dumps({"ok": False, "error": str(e)})
 
 
-# ----- Properties -----
-
 @mcp.tool()
 def add_property(
     title: str,
@@ -52,7 +50,7 @@ def add_property(
     status: Optional[str] = "available",
     description: Optional[str] = None,
 ) -> str:
-    """Create a property in Estacle. Required: title, price. Example: 3BHK in Vesu Surat at 8500000."""
+    """Create a property in Estacle. Required: title, price."""
     try:
         return _ok(crm.add_property(
             get_user(), title=title, price=price, city=city, address=address,
@@ -113,8 +111,6 @@ def delete_property(property_id: int, confirm: bool = False) -> str:
     except Exception as e:
         return _err(e)
 
-
-# ----- Clients -----
 
 @mcp.tool()
 def add_client(
@@ -187,8 +183,6 @@ def delete_client(client_id: int, confirm: bool = False) -> str:
         return _err(e)
 
 
-# ----- Leads -----
-
 @mcp.tool()
 def add_lead(
     full_name: str,
@@ -242,8 +236,6 @@ def change_lead_status(lead_id: int, status: str) -> str:
         return _err(e)
 
 
-# ----- Tasks -----
-
 @mcp.tool()
 def create_followup(
     title: str,
@@ -296,8 +288,6 @@ def mark_followup_complete(task_id: int) -> str:
         return _err(e)
 
 
-# ----- Analytics -----
-
 @mcp.tool()
 def get_dashboard_analytics() -> str:
     """CRM dashboard counts from the live database."""
@@ -344,19 +334,33 @@ def get_property_inventory_report() -> str:
 
 
 def create_mcp_asgi_app():
-    """Return Starlette ASGI app for Streamable HTTP MCP (mcp v1 + v2)."""
-    for name in ("streamable_http_app", "http_app", "sse_app"):
-        fn = getattr(mcp, name, None)
-        if callable(fn):
+    """
+    Streamable HTTP ASGI app with endpoint at /mcp (Claude URL).
+    Tries MCP v2 and v1 APIs.
+    """
+    errors = []
+    # Prefer endpoint path /mcp at application root (not nested under another /mcp mount)
+    attempts = [
+        ("streamable_http_app", {"streamable_http_path": "/mcp"}),
+        ("streamable_http_app", {"path": "/mcp"}),
+        ("http_app", {"path": "/mcp"}),
+        ("http_app", {"transport": "streamable-http", "path": "/mcp"}),
+        ("streamable_http_app", {}),
+        ("http_app", {}),
+        ("sse_app", {}),
+    ]
+    for attr, kwargs in attempts:
+        fn = getattr(mcp, attr, None)
+        if not callable(fn):
+            continue
+        try:
+            return fn(**kwargs)
+        except TypeError as e:
+            errors.append(f"{attr}{kwargs}: {e}")
             try:
                 return fn()
-            except TypeError:
-                # some versions require path/transport kwargs with defaults
-                try:
-                    return fn(transport="streamable-http")
-                except TypeError:
-                    return fn
-    raise RuntimeError(
-        "Installed mcp package has no streamable_http_app/http_app/sse_app. "
-        "Install mcp>=2.0 or mcp<2 with FastMCP."
-    )
+            except Exception as e2:
+                errors.append(f"{attr}(): {e2}")
+        except Exception as e:
+            errors.append(f"{attr}{kwargs}: {e}")
+    raise RuntimeError("Could not create MCP HTTP app. Tried: " + "; ".join(errors))
