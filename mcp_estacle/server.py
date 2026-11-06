@@ -5,7 +5,9 @@ Compatible with MCP Python SDK v2 (MCPServer) and v1 (FastMCP).
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 try:
     from mcp.server.mcpserver import MCPServer as _Server
@@ -18,15 +20,65 @@ except ImportError:
 from mcp_estacle.context import get_user
 from core import crm_service as crm
 
-mcp = _Server(
-    "Estacle CRM",
-    instructions=(
+
+def _transport_security():
+    """Allow Render / public host so MCP does not return 421 Invalid Host header."""
+    try:
+        from mcp.server.transport_security import TransportSecuritySettings
+    except ImportError:
+        return None
+
+    hosts = [
+        "localhost",
+        "localhost:*",
+        "127.0.0.1",
+        "127.0.0.1:*",
+        "estaclenew.onrender.com",
+        "estaclenew.onrender.com:*",
+    ]
+    base = os.environ.get("PUBLIC_BASE_URL") or os.environ.get("RENDER_EXTERNAL_URL") or ""
+    if base:
+        host = urlparse(base).hostname or base.replace("https://", "").replace("http://", "").split("/")[0]
+        if host:
+            hosts.append(host)
+            hosts.append(f"{host}:*")
+
+    # Render terminates TLS; default empty allowlist causes HTTP 421.
+    # On Render, relax host check unless MCP_RELAX_HOST_CHECK=0.
+    relax = os.environ.get("MCP_RELAX_HOST_CHECK", "").lower() in ("1", "true", "yes")
+    if os.environ.get("RENDER") or os.environ.get("RENDER_EXTERNAL_URL"):
+        if os.environ.get("MCP_RELAX_HOST_CHECK", "1") != "0":
+            relax = True
+
+    if relax:
+        return TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=list(dict.fromkeys(hosts)),
+        allowed_origins=["*"],
+    )
+
+
+_ts = _transport_security()
+_server_kwargs = {
+    "instructions": (
         "You are connected to Estacle, a real-estate CRM by TechSerenia. "
         "Use tools to create, read, and update CRM records in the live database. "
         "Never claim success unless a tool returns ok:true. "
         "For delete_property and delete_client, you must pass confirm=true only after the user explicitly confirms."
     ),
-)
+}
+if _ts is not None:
+    _server_kwargs["transport_security"] = _ts
+
+try:
+    mcp = _Server("Estacle CRM", **_server_kwargs)
+except TypeError:
+    mcp = _Server(
+        "Estacle CRM",
+        instructions=_server_kwargs["instructions"],
+    )
 
 
 def _ok(result: Any) -> str:
@@ -333,21 +385,25 @@ def get_property_inventory_report() -> str:
         return _err(e)
 
 
-def create_mcp_asgi_app(path: str = "/"):
-    """
-    Streamable HTTP ASGI app.
-    path="/" when mounted at /mcp so Claude URL https://host/mcp works.
-    """
+def create_mcp_asgi_app(path: str = "/mcp"):
+    """Streamable HTTP ASGI app. Default path /mcp for Claude."""
     errors = []
-    attempts = [
-        ("streamable_http_app", {"streamable_http_path": path}),
-        ("streamable_http_app", {"path": path}),
-        ("http_app", {"path": path}),
-        ("http_app", {"transport": "streamable-http", "path": path}),
-        ("streamable_http_app", {}),
-        ("http_app", {}),
-        ("sse_app", {}),
+    ts = _transport_security()
+    base_attempts = [
+        {"streamable_http_path": path},
+        {"path": path},
+        {"transport": "streamable-http", "path": path},
+        {},
     ]
+    attempts = []
+    for kwargs in base_attempts:
+        if ts is not None:
+            attempts.append(("streamable_http_app", {**kwargs, "transport_security": ts}))
+            attempts.append(("http_app", {**kwargs, "transport_security": ts}))
+        attempts.append(("streamable_http_app", kwargs))
+        attempts.append(("http_app", kwargs))
+    attempts.append(("sse_app", {}))
+
     for attr, kwargs in attempts:
         fn = getattr(mcp, attr, None)
         if not callable(fn):
