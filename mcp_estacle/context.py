@@ -13,5 +13,8 @@ def set_user(user: Optional[dict]):
 def get_user() -> dict:
     user = _current_user.get()
     if not user:
-        raise PermissionError("Not authenticated. Connect Claude with OAuth and retry.")
+        raise PermissionError(
+            "Not authenticated. In Claude, reconnect the Estacle connector and complete sign-in "
+            "with an admin or agent account, then retry."
+        )
     return user

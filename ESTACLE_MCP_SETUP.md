@@ -82,6 +82,18 @@ Only users with role **admin** or **agent** can authorize.
 
 ## 6. MCP server URL format
 
+Use either form (both should work after the `/mcp` redirect fix):
+
+```text
+https://YOUR-DOMAIN/mcp
+https://YOUR-DOMAIN/mcp/
+```
+
+If Claude reports **404**, confirm deploy is live and `curl -I https://YOUR-DOMAIN/mcp` is **401** or **307**, not Flask HTML 404.
+
+## 6b. MCP server URL format (detail)
+
+
 ```text
 https://YOUR-DOMAIN/mcp
 ```
