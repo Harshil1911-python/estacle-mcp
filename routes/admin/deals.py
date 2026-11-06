@@ -39,11 +39,38 @@ def _normalize_stage(st):
     return st
 
 
-def _sync_property_status(db, deal_id, stage, property_id):
+def _property_status_for_purpose(purpose):
+    """Map deal/listing purpose to property status stamp."""
+    p = (purpose or '').strip().lower()
+    if p in ('rent', 'rental', 'rented'):
+        return 'rented'
+    if p in ('lease', 'leased'):
+        return 'leased'
+    if p in ('sale', 'sell', 'sold', 'resale'):
+        return 'sold'
+    return 'sold'
+
+
+def _sync_property_status(db, deal_id, stage, property_id, purpose=None):
     if not property_id:
         return
     if stage == 'closed':
-        db.execute("UPDATE properties SET status = 'sold' WHERE id = ?", (property_id,))
+        if not purpose:
+            # try deal notes / property listing_type
+            deal = db.execute('SELECT notes FROM deals WHERE id = ?', (deal_id,)).fetchone()
+            notes = (deal['notes'] if deal else '') or ''
+            purpose = None
+            for key in ('Type:', 'type:'):
+                if key in notes:
+                    # "Type: Rent · Priority: ..."
+                    part = notes.split(key, 1)[1].split('·')[0].strip()
+                    purpose = part
+                    break
+            if not purpose:
+                prop = db.execute('SELECT listing_type FROM properties WHERE id = ?', (property_id,)).fetchone()
+                purpose = prop['listing_type'] if prop else 'sale'
+        status = _property_status_for_purpose(purpose)
+        db.execute("UPDATE properties SET status = ? WHERE id = ?", (status, property_id))
     elif stage in ('offer', 'negotiation', 'under_contract'):
         db.execute(
             "UPDATE properties SET status = 'under_offer' WHERE id = ? AND status IN ('available', 'under_offer')",
@@ -56,7 +83,7 @@ def _sync_property_status(db, deal_id, stage, property_id):
         ).fetchone()
         if not other:
             db.execute(
-                "UPDATE properties SET status = 'available' WHERE id = ? AND status = 'under_offer'",
+                "UPDATE properties SET status = 'available' WHERE id = ? AND status IN ('under_offer','sold','rented','leased')",
                 (property_id,),
             )
 
@@ -193,7 +220,7 @@ def admin_deals_pipeline():
 def admin_add_deal():
     db = get_db()
     migrate_db()
-    properties = db.execute('SELECT id, title FROM properties ORDER BY title').fetchall()
+    properties = db.execute('SELECT id, title, price, listing_type, agent_id FROM properties ORDER BY title').fetchall()
     clients = db.execute('SELECT id, full_name FROM clients ORDER BY full_name').fetchall()
     agents = db.execute(
         "SELECT id, full_name FROM users WHERE role IN ('admin','agent') AND is_active=1 ORDER BY full_name"
@@ -352,7 +379,7 @@ def admin_edit_deal(deal_id):
     if not deal:
         flash('Deal not found.', 'danger')
         return redirect(url_for('admin.admin_deals'))
-    properties = db.execute('SELECT id, title FROM properties ORDER BY title').fetchall()
+    properties = db.execute('SELECT id, title, price, listing_type, agent_id FROM properties ORDER BY title').fetchall()
     clients = db.execute('SELECT id, full_name FROM clients ORDER BY full_name').fetchall()
     agents = db.execute(
         "SELECT id, full_name FROM users WHERE role IN ('admin','agent') AND is_active=1 ORDER BY full_name"
@@ -548,3 +575,386 @@ def admin_import_deals():
             ' · skipped {}'.format(skipped) if skipped else ''
         ), 'warning')
     return redirect(url_for('admin.admin_deals'))
+
+
+@admin.route('/admin/deals/payments')
+@login_required
+@role_required('admin')
+def admin_track_payments():
+    """Track payments against deals (customer payments toward deal value)."""
+    db = get_db()
+    migrate_db()
+    q = request.args.get('q', '').strip()
+    deal_id = request.args.get('deal_id', '').strip()
+    sql = (
+        "SELECT d.id, d.title, d.value, d.stage, d.client_id, "
+        "c.full_name as client_name, p.title as property_title, "
+        "COALESCE((SELECT SUM(amount) FROM deal_payments dp WHERE dp.deal_id = d.id), 0) as paid "
+        "FROM deals d "
+        "LEFT JOIN clients c ON d.client_id = c.id "
+        "LEFT JOIN properties p ON d.property_id = p.id WHERE 1=1"
+    )
+    params = []
+    if q:
+        sql += " AND (d.title LIKE ? OR IFNULL(c.full_name,'') LIKE ? OR IFNULL(p.title,'') LIKE ?)"
+        params.extend(['%' + q + '%'] * 3)
+    if deal_id.isdigit():
+        sql += " AND d.id = ?"
+        params.append(int(deal_id))
+    sql += " ORDER BY d.updated_at DESC"
+    rows = [dict(r) for r in db.execute(sql, params).fetchall()]
+    for r in rows:
+        val = float(r.get('value') or 0)
+        paid = float(r.get('paid') or 0)
+        r['balance'] = max(val - paid, 0)
+        r['pct'] = round(100.0 * paid / val, 1) if val > 0 else 0
+        r['stage'] = _normalize_stage(r.get('stage'))
+    currency = get_setting('currency', 'INR')
+    return render_template(
+        'admin_deal_payments.html',
+        deals=rows,
+        q=q,
+        deal_id=deal_id,
+        stages=STAGES,
+        stage_labels=STAGE_LABELS,
+        currency=currency,
+        format_money=format_money,
+    )
+
+
+@admin.route('/admin/deals/<int:deal_id>/payments', methods=['GET', 'POST'])
+@login_required
+@role_required('admin')
+def admin_deal_payments(deal_id):
+    db = get_db()
+    migrate_db()
+    deal = db.execute(
+        """SELECT d.*, c.full_name as client_name, p.title as property_title
+           FROM deals d
+           LEFT JOIN clients c ON d.client_id = c.id
+           LEFT JOIN properties p ON d.property_id = p.id
+           WHERE d.id = ?""",
+        (deal_id,),
+    ).fetchone()
+    if not deal:
+        flash('Deal not found.', 'danger')
+        return redirect(url_for('admin.admin_track_payments'))
+    if request.method == 'POST':
+        try:
+            amount = float((request.form.get('amount') or '0').replace(',', ''))
+        except ValueError:
+            amount = 0
+        if amount <= 0:
+            flash('Enter a valid payment amount.', 'danger')
+            return redirect(url_for('admin.admin_deal_payments', deal_id=deal_id))
+        db.execute(
+            """INSERT INTO deal_payments
+               (deal_id, amount, payment_date, method, reference, notes, created_by)
+               VALUES (?,?,?,?,?,?,?)""",
+            (
+                deal_id,
+                amount,
+                request.form.get('payment_date') or None,
+                request.form.get('method') or None,
+                request.form.get('reference') or None,
+                request.form.get('notes') or None,
+                session.get('user_id'),
+            ),
+        )
+        # Auto-close deal when payments reach 100% of deal value
+        total_paid = db.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM deal_payments WHERE deal_id = ?",
+            (deal_id,),
+        ).fetchone()[0]
+        deal_value = float(deal['value'] or 0)
+        closed_now = False
+        if deal_value > 0 and float(total_paid) >= deal_value - 0.01:
+            purpose = request.form.get('deal_purpose') or None
+            if not purpose:
+                notes = deal['notes'] or ''
+                if 'Type:' in notes:
+                    purpose = notes.split('Type:', 1)[1].split('·')[0].strip()
+            if not purpose and deal['property_id']:
+                prop = db.execute(
+                    'SELECT listing_type FROM properties WHERE id = ?', (deal['property_id'],)
+                ).fetchone()
+                purpose = prop['listing_type'] if prop else 'sale'
+            db.execute(
+                "UPDATE deals SET stage = 'closed', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (deal_id,),
+            )
+            _sync_property_status(db, deal_id, 'closed', deal['property_id'], purpose=purpose)
+            closed_now = True
+            log_activity('Deal auto-closed (paid in full)', 'deal', deal_id, deal['title'])
+        db.commit()
+        log_activity('Payment recorded', 'deal', deal_id, '{} on deal {}'.format(amount, deal['title']))
+        if closed_now:
+            flash('Payment recorded. Deal marked Closed — property stamped complete.', 'success')
+        else:
+            flash('Payment recorded.', 'success')
+        return redirect(url_for('admin.admin_deal_payments', deal_id=deal_id))
+    payments = db.execute(
+        "SELECT * FROM deal_payments WHERE deal_id = ? ORDER BY COALESCE(payment_date, created_at) DESC, id DESC",
+        (deal_id,),
+    ).fetchall()
+    paid = db.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM deal_payments WHERE deal_id = ?", (deal_id,)
+    ).fetchone()[0]
+    value = float(deal['value'] or 0)
+    currency = get_setting('currency', 'INR')
+    return render_template(
+        'admin_deal_payment_detail.html',
+        deal=dict(deal),
+        payments=payments,
+        paid=float(paid or 0),
+        balance=max(value - float(paid or 0), 0),
+        pct=round(100.0 * float(paid or 0) / value, 1) if value > 0 else 0,
+        currency=currency,
+        format_money=format_money,
+        stage_labels=STAGE_LABELS,
+    )
+
+
+@admin.route('/admin/deals/payments/<int:payment_id>/delete', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_delete_payment(payment_id):
+    db = get_db()
+    row = db.execute('SELECT id, deal_id, amount FROM deal_payments WHERE id = ?', (payment_id,)).fetchone()
+    if not row:
+        flash('Payment not found.', 'danger')
+        return redirect(url_for('admin.admin_track_payments'))
+    deal_id = row['deal_id']
+    db.execute('DELETE FROM deal_payments WHERE id = ?', (payment_id,))
+    db.commit()
+    flash('Payment removed.', 'success')
+    return redirect(url_for('admin.admin_deal_payments', deal_id=deal_id))
+
+
+@admin.route('/admin/deals/<int:deal_id>/payments/export')
+@login_required
+@role_required('admin')
+def admin_export_deal_payments(deal_id):
+    db = get_db()
+    migrate_db()
+    deal = db.execute('SELECT id, title, value FROM deals WHERE id = ?', (deal_id,)).fetchone()
+    if not deal:
+        flash('Deal not found.', 'danger')
+        return redirect(url_for('admin.admin_track_payments'))
+    rows = db.execute(
+        """SELECT id, amount, payment_date, method, reference, notes, created_at
+           FROM deal_payments WHERE deal_id = ?
+           ORDER BY COALESCE(payment_date, created_at) ASC, id ASC""",
+        (deal_id,),
+    ).fetchall()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['id', 'amount', 'payment_date', 'method', 'reference', 'notes', 'created_at', 'deal_id', 'deal_title', 'deal_value'])
+    for r in rows:
+        writer.writerow([
+            r['id'], r['amount'], r['payment_date'], r['method'], r['reference'],
+            r['notes'], r['created_at'], deal_id, deal['title'], deal['value'],
+        ])
+    filename = 'deal_{}_payments.csv'.format(deal_id)
+    resp = make_response(output.getvalue())
+    resp.headers['Content-Type'] = 'text/csv'
+    resp.headers['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+    return resp
+
+
+
+@admin.route('/admin/deals/brokerage')
+@login_required
+@role_required('admin')
+def admin_brokerage_payments():
+    """Track brokerage due and received for open and closed deals."""
+    db = get_db()
+    migrate_db()
+    q = request.args.get('q', '').strip()
+    sql = (
+        "SELECT d.id, d.title, d.value, d.commission_rate, d.stage, d.expected_close, "
+        "c.full_name as client_name, p.title as property_title, u.full_name as agent_name, "
+        "COALESCE((SELECT SUM(amount) FROM deal_payments dp WHERE dp.deal_id = d.id), 0) as customer_paid, "
+        "COALESCE((SELECT SUM(amount) FROM deal_brokerage_payments bp WHERE bp.deal_id = d.id), 0) as brokerage_received "
+        "FROM deals d "
+        "LEFT JOIN clients c ON d.client_id = c.id "
+        "LEFT JOIN properties p ON d.property_id = p.id "
+        "LEFT JOIN users u ON d.agent_id = u.id "
+        "WHERE lower(IFNULL(d.stage,'')) != 'lost'"
+    )
+    params = []
+    if q:
+        sql += " AND (d.title LIKE ? OR IFNULL(c.full_name,'') LIKE ? OR IFNULL(u.full_name,'') LIKE ? OR IFNULL(p.title,'') LIKE ?)"
+        params.extend(['%' + q + '%'] * 4)
+    sql += " ORDER BY CASE WHEN lower(IFNULL(d.stage,'')) = 'closed' THEN 1 ELSE 0 END, d.updated_at DESC"
+    rows = [dict(r) for r in db.execute(sql, params).fetchall()]
+    total_open_brokerage = 0.0
+    received_open_brokerage = 0.0
+    total_all_brokerage = 0.0
+    received_all = 0.0
+    for r in rows:
+        r['stage'] = _normalize_stage(r.get('stage'))
+        try:
+            r['brokerage_due'] = (float(r.get('value') or 0) * float(r.get('commission_rate') or 0)) / 100.0
+        except Exception:
+            r['brokerage_due'] = 0.0
+        r['customer_paid'] = float(r.get('customer_paid') or 0)
+        r['brokerage_received'] = float(r.get('brokerage_received') or 0)
+        val = float(r.get('value') or 0)
+        r['customer_balance'] = max(val - r['customer_paid'], 0)
+        r['brokerage_balance'] = max(r['brokerage_due'] - r['brokerage_received'], 0)
+        r['customer_pct'] = round(100.0 * r['customer_paid'] / val, 1) if val > 0 else 0
+        r['brokerage_pct'] = round(100.0 * r['brokerage_received'] / r['brokerage_due'], 1) if r['brokerage_due'] > 0 else 0
+        fully_paid = val <= 0 or r['customer_paid'] >= val - 0.01
+        fully_brokerage = r['brokerage_due'] <= 0 or r['brokerage_received'] >= r['brokerage_due'] - 0.01
+        r['completed'] = bool(fully_paid and fully_brokerage and r['stage'] == 'closed')
+        total_all_brokerage += r['brokerage_due']
+        received_all += r['brokerage_received']
+        if r['stage'] != 'closed':
+            total_open_brokerage += r['brokerage_due']
+            received_open_brokerage += r['brokerage_received']
+    currency = get_setting('currency', 'INR')
+    return render_template(
+        'admin_brokerage.html',
+        deals=rows,
+        total_open_brokerage=total_open_brokerage,
+        received_open_brokerage=received_open_brokerage,
+        total_all_brokerage=total_all_brokerage,
+        received_all=received_all,
+        q=q,
+        stage_labels=STAGE_LABELS,
+        currency=currency,
+        format_money=format_money,
+    )
+
+
+@admin.route('/admin/deals/<int:deal_id>/brokerage', methods=['GET', 'POST'])
+@login_required
+@role_required('admin')
+def admin_deal_brokerage(deal_id):
+    db = get_db()
+    migrate_db()
+    deal = db.execute(
+        """SELECT d.*, c.full_name as client_name, p.title as property_title, u.full_name as agent_name
+           FROM deals d
+           LEFT JOIN clients c ON d.client_id = c.id
+           LEFT JOIN properties p ON d.property_id = p.id
+           LEFT JOIN users u ON d.agent_id = u.id
+           WHERE d.id = ?""",
+        (deal_id,),
+    ).fetchone()
+    if not deal:
+        flash('Deal not found.', 'danger')
+        return redirect(url_for('admin.admin_brokerage_payments'))
+    if request.method == 'POST':
+        try:
+            amount = float((request.form.get('amount') or '0').replace(',', ''))
+        except ValueError:
+            amount = 0
+        if amount <= 0:
+            flash('Enter a valid brokerage amount.', 'danger')
+            return redirect(url_for('admin.admin_deal_brokerage', deal_id=deal_id))
+        db.execute(
+            """INSERT INTO deal_brokerage_payments
+               (deal_id, amount, payment_date, method, reference, notes, created_by)
+               VALUES (?,?,?,?,?,?,?)""",
+            (
+                deal_id,
+                amount,
+                request.form.get('payment_date') or None,
+                request.form.get('method') or None,
+                request.form.get('reference') or None,
+                request.form.get('notes') or None,
+                session.get('user_id'),
+            ),
+        )
+        db.commit()
+        log_activity('Brokerage recorded', 'deal', deal_id, str(amount))
+        flash('Brokerage payment recorded.', 'success')
+        return redirect(url_for('admin.admin_deal_brokerage', deal_id=deal_id))
+
+    payments = db.execute(
+        "SELECT * FROM deal_brokerage_payments WHERE deal_id = ? ORDER BY COALESCE(payment_date, created_at) DESC, id DESC",
+        (deal_id,),
+    ).fetchall()
+    received = float(db.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM deal_brokerage_payments WHERE deal_id = ?",
+        (deal_id,),
+    ).fetchone()[0] or 0)
+    customer_paid = float(db.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM deal_payments WHERE deal_id = ?",
+        (deal_id,),
+    ).fetchone()[0] or 0)
+    value = float(deal['value'] or 0)
+    try:
+        due = (value * float(deal['commission_rate'] or 0)) / 100.0
+    except Exception:
+        due = 0.0
+    stage = _normalize_stage(deal['stage'])
+    completed = (
+        stage == 'closed'
+        and (value <= 0 or customer_paid >= value - 0.01)
+        and (due <= 0 or received >= due - 0.01)
+    )
+    currency = get_setting('currency', 'INR')
+    return render_template(
+        'admin_deal_brokerage_detail.html',
+        deal=dict(deal),
+        payments=payments,
+        due=due,
+        received=received,
+        balance=max(due - received, 0),
+        pct=round(100.0 * received / due, 1) if due > 0 else 0,
+        customer_paid=customer_paid,
+        customer_balance=max(value - customer_paid, 0),
+        completed=completed,
+        stage=stage,
+        currency=currency,
+        format_money=format_money,
+        stage_labels=STAGE_LABELS,
+    )
+
+
+@admin.route('/admin/deals/brokerage/<int:payment_id>/delete', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_delete_brokerage_payment(payment_id):
+    db = get_db()
+    row = db.execute(
+        'SELECT id, deal_id FROM deal_brokerage_payments WHERE id = ?', (payment_id,)
+    ).fetchone()
+    if not row:
+        flash('Record not found.', 'danger')
+        return redirect(url_for('admin.admin_brokerage_payments'))
+    deal_id = row['deal_id']
+    db.execute('DELETE FROM deal_brokerage_payments WHERE id = ?', (payment_id,))
+    db.commit()
+    flash('Brokerage entry removed.', 'success')
+    return redirect(url_for('admin.admin_deal_brokerage', deal_id=deal_id))
+
+
+@admin.route('/admin/deals/<int:deal_id>/brokerage/export')
+@login_required
+@role_required('admin')
+def admin_export_deal_brokerage(deal_id):
+    db = get_db()
+    migrate_db()
+    deal = db.execute('SELECT id, title, value, commission_rate FROM deals WHERE id = ?', (deal_id,)).fetchone()
+    if not deal:
+        flash('Deal not found.', 'danger')
+        return redirect(url_for('admin.admin_brokerage_payments'))
+    rows = db.execute(
+        """SELECT id, amount, payment_date, method, reference, notes, created_at
+           FROM deal_brokerage_payments WHERE deal_id = ?
+           ORDER BY COALESCE(payment_date, created_at) ASC, id ASC""",
+        (deal_id,),
+    ).fetchall()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['id', 'amount', 'payment_date', 'method', 'reference', 'notes', 'created_at', 'deal_id', 'deal_title'])
+    for r in rows:
+        writer.writerow([r['id'], r['amount'], r['payment_date'], r['method'], r['reference'], r['notes'], r['created_at'], deal_id, deal['title']])
+    resp = make_response(output.getvalue())
+    resp.headers['Content-Type'] = 'text/csv'
+    resp.headers['Content-Disposition'] = 'attachment; filename=deal_{}_brokerage.csv'.format(deal_id)
+    return resp
