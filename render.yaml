@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: estacle-ultra
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn asgi:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: PREFERRED_URL_SCHEME
+        value: https
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      - key: PUBLIC_BASE_URL
+        sync: false

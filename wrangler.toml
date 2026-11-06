@@ -1,0 +1,26 @@
+name = "estacle-ultra"
+main = "cf-worker/src/index.js"
+compatibility_date = "2026-11-05"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare Containers — runs the Flask Dockerfile
+[[containers]]
+class_name = "EstacleContainer"
+image = "./Dockerfile"
+max_instances = 1
+
+[[durable_objects.bindings]]
+name = "ESTACLE"
+class_name = "EstacleContainer"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["EstacleContainer"]
+
+# Optional: bind R2 later for media
+# [[r2_buckets]]
+# binding = "UPLOADS"
+# bucket_name = "estacle-uploads"
+
+# Secrets (set via dashboard or CLI):
+# wrangler secret put SECRET_KEY
