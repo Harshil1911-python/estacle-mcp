@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estacle | Display Board</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        .app-layout { height: 100vh; overflow: hidden; }
+        .main-content {
+            height: 100vh !important; max-height: 100vh !important; min-height: 0 !important;
+            overflow: hidden !important; display: flex !important; flex-direction: column !important;
+            padding-bottom: 0 !important; background: #f1f5f9; box-sizing: border-box;
+        }
+        .top-bar.dash-top {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 24px !important; background: #fff; border-bottom: 1px solid #e8ecf1;
+            box-shadow: none; gap: 12px; flex-wrap: wrap; flex-shrink: 0; z-index: 20;
+        }
+        .dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 2px; letter-spacing: -0.02em; }
+        .dash-top .page-subtitle { font-size: 13px; color: #64748b; margin: 0; }
+        .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .btn-pill {
+            display: inline-flex; align-items: center; height: 36px; padding: 0 14px;
+            border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none;
+            border: 1px solid #e2e8f0; background: #fff; color: #334155; font-family: inherit; cursor: pointer;
+            transition: background 0.15s, transform 0.2s, opacity 0.2s;
+        }
+        .btn-pill:hover { background: #f8fafc; }
+        .btn-pill.primary { background: #0f172a; color: #fff; border-color: #0f172a; }
+        .btn-pill.primary:hover { background: #1e293b; color: #fff; }
+        .btn-pill.active-mode {
+            background: #0f172a; color: #fff; border-color: #0f172a;
+        }
+        .btn-pill.queens-on {
+            background: #4c1d95; color: #fff; border-color: #4c1d95;
+        }
+        .badge-currency {
+            display: inline-flex; align-items: center; height: 28px; padding: 0 10px;
+            border-radius: 999px; background: #f1f5f9; color: #475569; font-size: 12px; font-weight: 600;
+        }
+        .mode-chip {
+            display: none; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
+            border-radius: 999px; font-size: 12px; font-weight: 600;
+        }
+        .mode-chip.present { display: inline-flex; background: #ecfdf5; color: #047857; }
+        .mode-chip.queens { display: inline-flex; background: #f5f3ff; color: #5b21b6; }
+
+        .board-body {
+            flex: 1 1 auto; min-height: 0; display: flex; overflow: hidden;
+        }
+
+        /* Fixed filters column — does not scroll with listings */
+        .filter-panel {
+            width: 260px; flex-shrink: 0; background: #fff; border-right: 1px solid #e8ecf1;
+            padding: 18px 16px; overflow-y: auto; box-sizing: border-box;
+            height: 100%; position: sticky; top: 0; align-self: stretch;
+        }
+        .filter-panel h2 {
+            font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 14px;
+            text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .filter-group { margin-bottom: 12px; }
+        .filter-group label {
+            display: block; font-size: 11px; font-weight: 600; color: #64748b;
+            text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 5px;
+        }
+        .filter-group input, .filter-group select {
+            width: 100%; height: 36px; padding: 0 10px; border: 1px solid #e2e8f0;
+            border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff;
+            color: #0f172a; box-sizing: border-box; outline: none;
+        }
+        .filter-group input:focus, .filter-group select:focus {
+            border-color: #94a3b8; box-shadow: 0 0 0 2px rgba(15,23,42,0.06);
+        }
+        .range-row { display: flex; gap: 6px; align-items: center; }
+        .range-row input { flex: 1; min-width: 0; }
+        .range-row .sep { color: #cbd5e1; font-size: 12px; }
+        .filter-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+        .filter-count {
+            text-align: center; font-size: 13px; color: #64748b; margin-top: 12px; padding-top: 12px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .filter-count strong { color: #0f172a; font-size: 18px; font-weight: 700; }
+        .quick-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+        .quick-chips a {
+            font-size: 11.5px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+            background: #f1f5f9; color: #475569; text-decoration: none;
+        }
+        .quick-chips a:hover, .quick-chips a.on { background: #0f172a; color: #fff; }
+
+        /* Only this area scrolls */
+        .display-main {
+            flex: 1 1 auto; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden;
+            padding: 20px 24px 32px; -webkit-overflow-scrolling: touch;
+        }
+        .prop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px; align-content: start;
+        }
+        body.density-compact .prop-grid {
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        body.density-compact .card-img,
+        body.density-compact .card-no-img { height: 130px; }
+        body.density-compact .card-price { font-size: 15px; }
+        body.density-large .prop-grid {
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 20px;
+        }
+        body.density-large .card-img,
+        body.density-large .card-no-img { height: 220px; }
+        body.density-large .card-price { font-size: 22px; }
+
+        .prop-card {
+            background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+            overflow: hidden; text-decoration: none; color: inherit;
+            box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+            display: flex; flex-direction: column;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .prop-card:hover {
+            border-color: #c7d2fe; box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+        }
+        .card-img, .card-no-img {
+            width: 100%; height: 180px; object-fit: cover; display: block; background: #f1f5f9;
+        }
+        .card-no-img {
+            display: flex; align-items: center; justify-content: center;
+            color: #94a3b8; font-size: 13px; font-weight: 500;
+        }
+        .card-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+        .card-id { font-size: 11px; font-weight: 600; color: #94a3b8; letter-spacing: 0.02em; }
+        .card-title {
+            font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.3;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .card-sub { font-size: 12.5px; color: #64748b; }
+        .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+        .card-tags span {
+            font-size: 11px; font-weight: 600; text-transform: capitalize;
+            padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #475569;
+        }
+        .card-tags span.sale { background: #eef2ff; color: #4338ca; }
+        .card-tags span.rent { background: #f0f9ff; color: #0369a1; }
+        .card-tags span.available { background: #ecfdf5; color: #047857; }
+        .card-tags span.under_offer { background: #fff7ed; color: #c2410c; }
+        .card-tags span.sold { background: #f1f5f9; color: #334155; }
+        .card-price {
+            font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 6px;
+            letter-spacing: -0.02em;
+        }
+        .card-price.hidden-price {
+            font-size: 13px; font-weight: 600; color: #7c3aed; letter-spacing: 0;
+        }
+        .card-agent { font-size: 12px; color: #94a3b8; }
+        .empty-display {
+            grid-column: 1 / -1; text-align: center; padding: 64px 20px;
+            color: #94a3b8; background: #fff; border: 1px dashed #e2e8f0; border-radius: 14px;
+        }
+
+        /* ===== Presentation mode ===== */
+        body.present-mode .sidebar { display: none !important; }
+        body.present-mode .main-content { margin-left: 0 !important; width: 100%; }
+        /* Hide the normal top bar content — only filters + grid */
+        body.present-mode .dash-top .page-title,
+        body.present-mode .dash-top .page-subtitle { display: none; }
+        body.present-mode .top-bar.dash-top {
+            padding: 0 !important; height: 0; overflow: visible; border: none;
+            background: transparent; min-height: 0;
+        }
+        body.present-mode .top-actions {
+            position: fixed; left: 12px; top: 12px; z-index: 100;
+            flex-direction: column; align-items: stretch; gap: 6px;
+            transform: translateX(-120%);
+            opacity: 0; pointer-events: none;
+            transition: transform 0.28s ease, opacity 0.28s ease;
+            background: rgba(255,255,255,0.96);
+            border: 1px solid #e2e8f0; border-radius: 14px;
+            padding: 10px; box-shadow: 0 12px 32px rgba(15,23,42,0.12);
+            min-width: 160px;
+        }
+        body.present-mode .top-actions.open {
+            transform: translateX(0);
+            opacity: 1; pointer-events: auto;
+        }
+        body.present-mode .top-actions .btn-pill { width: 100%; justify-content: center; }
+        body.present-mode .badge-currency { display: none; }
+
+        /* Floating tab to pull controls from the left */
+        .slide-tab {
+            display: none;
+            position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+            z-index: 101; writing-mode: vertical-rl; text-orientation: mixed;
+            background: #0f172a; color: #fff; border: none; border-radius: 0 10px 10px 0;
+            padding: 14px 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+            cursor: pointer; font-family: inherit; box-shadow: 4px 0 16px rgba(15,23,42,0.15);
+        }
+        body.present-mode .slide-tab { display: block; }
+        body.present-mode.controls-open .slide-tab { left: 172px; }
+
+        body.present-mode .filter-panel {
+            width: 240px; height: 100%; overflow-y: auto; position: relative;
+        }
+        body.present-mode .board-body { height: 100vh; }
+        body.present-mode .card-img, body.present-mode .card-no-img { height: 200px; }
+
+        /* Queens mode: soft purple accent, no prices */
+        body.queens-mode .card-price.real-price { display: none; }
+        body.queens-mode .card-price.hidden-price { display: block; }
+        body:not(.queens-mode) .card-price.hidden-price { display: none; }
+        body.queens-mode .prop-card:hover { border-color: #c4b5fd; }
+        body.queens-mode .filter-panel { border-right-color: #ede9fe; }
+
+        .kbd-hint {
+            font-size: 11px; color: #94a3b8; margin-top: 10px; line-height: 1.45;
+        }
+        .kbd-hint kbd {
+            display: inline-block; padding: 1px 5px; border-radius: 4px;
+            background: #f1f5f9; border: 1px solid #e2e8f0; font-size: 10px; font-family: inherit;
+        }
+
+        @media (max-width: 900px) {
+            .board-body { flex-direction: column; overflow: auto; }
+            .filter-panel { width: 100%; height: auto; max-height: 40vh; border-right: none; border-bottom: 1px solid #e8ecf1; }
+            body.present-mode .slide-tab { top: auto; bottom: 16px; transform: none; writing-mode: horizontal-tb; border-radius: 10px; left: 12px; }
+        }
+    </style>
+</head>
+<body class="{% if present %}present-mode{% endif %} {% if queens %}queens-mode{% endif %} density-{{ density or 'comfortable' }}">
+<div class="app-layout">
+    {% set active = 'display_properties' %}
+    {% include 'partials/admin_sidebar.html' %}
+    <main class="main-content">
+        <header class="top-bar dash-top">
+            <div>
+                <h1 class="page-title">Display Board</h1>
+                <p class="page-subtitle">Live inventory for office and customer walk-throughs</p>
+            </div>
+            <div class="top-actions" id="topActions">
+                <span class="badge-currency">{{ currency }}</span>
+                {% if present %}
+                <span class="mode-chip present">Presentation</span>
+                {% endif %}
+                {% if queens %}
+                <span class="mode-chip queens">Queens mode</span>
+                {% endif %}
+
+                {# Build query helpers #}
+                {% set base = filters.copy() if filters is mapping else {} %}
+
+                {% if present %}
+                <a href="{{ url_for('admin.admin_display_properties', queens=queens or none, **filters) }}" class="btn-pill">Exit presentation</a>
+                {% else %}
+                <a href="{{ url_for('admin.admin_display_properties', present='1', queens=queens or none, **filters) }}" class="btn-pill primary">Presentation mode</a>
+                {% endif %}
+
+                {% if queens %}
+                <a href="{{ url_for('admin.admin_display_properties', present=present or none, **filters) }}" class="btn-pill queens-on">Exit Queens</a>
+                {% else %}
+                <a href="{{ url_for('admin.admin_display_properties', present=present or none, queens='1', **filters) }}" class="btn-pill">Queens mode</a>
+                {% endif %}
+
+                <a href="{{ url_for('admin.admin_display_properties', present=present or none, queens=queens or none, density='comfortable', q=filters.q, listing_type=filters.listing_type, property_type=filters.property_type, city=filters.city, status=filters.status, beds=filters.beds, pmin=filters.pmin, pmax=filters.pmax, sort=filters.sort) }}" class="btn-pill {% if density == 'comfortable' %}active-mode{% endif %}">Comfort</a>
+                <a href="{{ url_for('admin.admin_display_properties', present=present or none, queens=queens or none, density='compact', q=filters.q, listing_type=filters.listing_type, property_type=filters.property_type, city=filters.city, status=filters.status, beds=filters.beds, pmin=filters.pmin, pmax=filters.pmax, sort=filters.sort) }}" class="btn-pill {% if density == 'compact' %}active-mode{% endif %}">Compact</a>
+                <a href="{{ url_for('admin.admin_display_properties', present=present or none, queens=queens or none, density='large', q=filters.q, listing_type=filters.listing_type, property_type=filters.property_type, city=filters.city, status=filters.status, beds=filters.beds, pmin=filters.pmin, pmax=filters.pmax, sort=filters.sort) }}" class="btn-pill {% if density == 'large' %}active-mode{% endif %}">Large</a>
+
+                <button type="button" class="btn-pill" id="btnFullscreen" onclick="toggleFullscreen()">Fullscreen</button>
+                <a href="{{ url_for('admin.admin_compare') }}" class="btn-pill">Compare</a>
+                <a href="{{ url_for('admin.admin_properties') }}" class="btn-pill">All properties</a>
+            </div>
+        </header>
+
+        <button type="button" class="slide-tab" id="slideTab" onclick="toggleControls()" title="Show controls">CONTROLS</button>
+
+        <div class="board-body">
+            <aside class="filter-panel">
+                <h2>Filters</h2>
+                <div class="quick-chips">
+                    <a class="{% if filters.status == 'available' %}on{% endif %}"
+                       href="{{ url_for('admin.admin_display_properties', present=present or none, queens=queens or none, status='available', density=density, sort=sort, listing_type=filters.listing_type, property_type=filters.property_type, city=filters.city, beds=filters.beds, pmin=filters.pmin, pmax=filters.pmax, q=filters.q) }}">Available</a>
+                    <a class="{% if filters.listing_type == 'sale' %}on{% endif %}"
+                       href="{{ url_for('admin.admin_display_properties', present=present or none, queens=queens or none, listing_type='sale', density=density, sort=sort, status=filters.status, property_type=filters.property_type, city=filters.city, beds=filters.beds, pmin=filters.pmin, pmax=filters.pmax, q=filters.q) }}">Sale</a>
+                    <a class="{% if filters.listing_type == 'rent' %}on{% endif %}"
+                       href="{{ url_for('admin.admin_display_properties', present=present or none, queens=queens or none, listing_type='rent', density=density, sort=sort, status=filters.status, property_type=filters.property_type, city=filters.city, beds=filters.beds, pmin=filters.pmin, pmax=filters.pmax, q=filters.q) }}">Rent</a>
+                </div>
+                <form method="GET" action="{{ url_for('admin.admin_display_properties') }}">
+                    {% if present %}<input type="hidden" name="present" value="1">{% endif %}
+                    {% if queens %}<input type="hidden" name="queens" value="1">{% endif %}
+                    <input type="hidden" name="density" value="{{ density or 'comfortable' }}">
+                    <div class="filter-group">
+                        <label>Search</label>
+                        <input type="search" name="q" value="{{ filters.q or '' }}" placeholder="Title, city, address…">
+                    </div>
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select name="status">
+                            <option value="">All status</option>
+                            <option value="available" {% if filters.status == 'available' %}selected{% endif %}>Available</option>
+                            <option value="under_offer" {% if filters.status == 'under_offer' %}selected{% endif %}>Under offer</option>
+                            <option value="sold" {% if filters.status == 'sold' %}selected{% endif %}>Sold</option>
+                            <option value="rented" {% if filters.status == 'rented' %}selected{% endif %}>Rented</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Purpose</label>
+                        <select name="listing_type">
+                            <option value="">Sale & rent</option>
+                            <option value="sale" {% if filters.listing_type == 'sale' %}selected{% endif %}>For sale</option>
+                            <option value="rent" {% if filters.listing_type == 'rent' %}selected{% endif %}>For rent</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Type</label>
+                        <select name="property_type">
+                            <option value="">All types</option>
+                            <option value="apartment" {% if filters.property_type == 'apartment' %}selected{% endif %}>Apartment</option>
+                            <option value="house" {% if filters.property_type == 'house' %}selected{% endif %}>House</option>
+                            <option value="villa" {% if filters.property_type == 'villa' %}selected{% endif %}>Villa</option>
+                            <option value="plot" {% if filters.property_type == 'plot' %}selected{% endif %}>Plot</option>
+                            <option value="commercial" {% if filters.property_type == 'commercial' %}selected{% endif %}>Commercial</option>
+                            <option value="office" {% if filters.property_type == 'office' %}selected{% endif %}>Office</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>City</label>
+                        <select name="city">
+                            <option value="">All cities</option>
+                            {% for c in cities %}
+                            <option value="{{ c }}" {% if filters.city == c %}selected{% endif %}>{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Beds+</label>
+                        <select name="beds">
+                            <option value="">Any</option>
+                            <option value="1" {% if filters.beds == '1' %}selected{% endif %}>1+</option>
+                            <option value="2" {% if filters.beds == '2' %}selected{% endif %}>2+</option>
+                            <option value="3" {% if filters.beds == '3' %}selected{% endif %}>3+</option>
+                            <option value="4" {% if filters.beds == '4' %}selected{% endif %}>4+</option>
+                            <option value="5" {% if filters.beds == '5' %}selected{% endif %}>5+</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Price range</label>
+                        <div class="range-row">
+                            <input type="number" name="pmin" value="{{ filters.pmin or '' }}" placeholder="Min" min="0" step="any">
+                            <span class="sep">–</span>
+                            <input type="number" name="pmax" value="{{ filters.pmax or '' }}" placeholder="Max" min="0" step="any">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Sort</label>
+                        <select name="sort">
+                            <option value="status" {% if sort == 'status' %}selected{% endif %}>Available first</option>
+                            <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Price · low to high</option>
+                            <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Price · high to low</option>
+                            <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest</option>
+                            <option value="beds" {% if sort == 'beds' %}selected{% endif %}>Most bedrooms</option>
+                        </select>
+                    </div>
+                    <div class="filter-actions">
+                        <button type="submit" class="btn-pill primary" style="justify-content:center;width:100%">Apply filters</button>
+                        <a href="{{ url_for('admin.admin_display_properties', present=present or none, queens=queens or none, density=density) }}" class="btn-pill" style="justify-content:center;width:100%">Clear all</a>
+                    </div>
+                    <div class="filter-count"><strong>{{ properties|length }}</strong><br>listings shown</div>
+                    <p class="kbd-hint">
+                        Shortcuts: <kbd>P</kbd> present · <kbd>Q</kbd> queens · <kbd>F</kbd> fullscreen · <kbd>C</kbd> controls
+                    </p>
+                </form>
+            </aside>
+
+            <div class="display-main" id="displayMain">
+                <div class="prop-grid">
+                    {% for p in properties %}
+                    {% set photos = (p.photos or '').split(',') if p.photos else [] %}
+                    {% set cover = photos[0].strip() if photos and photos[0].strip() else none %}
+                    <a href="{{ url_for('admin.admin_property_detail', prop_id=p.id) }}" class="prop-card">
+                        {% if cover %}
+                        <img class="card-img" src="{{ url_for('static', filename='uploads/properties/' + cover) }}" alt="{{ p.title }}" loading="lazy">
+                        {% else %}
+                        <div class="card-no-img">No photo</div>
+                        {% endif %}
+                        <div class="card-body">
+                            <div class="card-id">#{{ p.id }} · {{ (p.listing_type or 'sale')|capitalize }}</div>
+                            <div class="card-title">{{ p.title }}</div>
+                            <div class="card-sub">
+                                {{ p.city or '—' }}
+                                {% if p.bedrooms is not none %} · {{ p.bedrooms }} bed{% endif %}
+                                {% if p.bathrooms is not none %} · {{ p.bathrooms }} bath{% endif %}
+                                {% if p.area_sqft %} · {{ p.area_sqft }} sqft{% endif %}
+                            </div>
+                            <div class="card-tags">
+                                <span class="{{ p.status or 'available' }}">{{ (p.status or 'available')|replace('_',' ') }}</span>
+                                <span>{{ p.property_type or '—' }}</span>
+                                {% if p.furnishing %}<span>{{ p.furnishing }}</span>{% endif %}
+                            </div>
+                            <div class="card-price real-price">{{ format_money(p.price, currency) }}{% if p.listing_type == 'rent' %}<span style="font-size:13px;font-weight:500;color:#64748b"> / mo</span>{% endif %}</div>
+                            <div class="card-price hidden-price">Price on request</div>
+                            <div class="card-agent">{{ p.agent_name or 'Unassigned agent' }}</div>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div class="empty-display">
+                        <p style="font-size:15px;font-weight:600;color:#0f172a;margin:0 0 6px">No properties match</p>
+                        <p style="font-size:13px;margin:0">Adjust filters or clear them to show more inventory.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleControls() {
+  document.body.classList.toggle('controls-open');
+  var panel = document.getElementById('topActions');
+  if (panel) panel.classList.toggle('open');
+}
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(function(){});
+  } else {
+    document.exitFullscreen();
+  }
+}
+document.addEventListener('keydown', function(e) {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
+  var key = e.key.toLowerCase();
+  var url = new URL(window.location.href);
+  if (key === 'c' && document.body.classList.contains('present-mode')) {
+    toggleControls();
+  }
+  if (key === 'f') {
+    toggleFullscreen();
+  }
+  if (key === 'q') {
+    if (url.searchParams.get('queens')) url.searchParams.delete('queens');
+    else url.searchParams.set('queens', '1');
+    window.location.href = url.toString();
+  }
+  if (key === 'p') {
+    if (url.searchParams.get('present')) url.searchParams.delete('present');
+    else url.searchParams.set('present', '1');
+    window.location.href = url.toString();
+  }
+  if (key === 'escape' && document.body.classList.contains('controls-open')) {
+    toggleControls();
+  }
+});
+// Close slide controls when clicking the grid
+document.getElementById('displayMain') && document.getElementById('displayMain').addEventListener('click', function() {
+  if (document.body.classList.contains('controls-open')) toggleControls();
+});
+</script>
+</body>
+</html>

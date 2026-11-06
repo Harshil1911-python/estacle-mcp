@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Estacle | Leads Pipeline</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+html, body { height: 100%; overflow: hidden; }
+.app-layout { height: 100vh; overflow: hidden; }
+.main-content {
+  height: 100vh !important; max-height: 100vh !important; min-height: 0 !important;
+  overflow: hidden !important; display: flex !important; flex-direction: column !important;
+  padding-bottom: 0 !important; box-sizing: border-box; background: transparent !important;
+}
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important;
+  background: transparent !important; border: none !important; box-shadow: none !important;
+  gap: 12px; flex-wrap: wrap; flex-shrink: 0;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; letter-spacing: -0.02em; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
+.top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn-export {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  background: #fff; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.btn-export:hover { background: #f8fafc; }
+.btn-create {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 16px;
+  background: #0f172a; color: #fff; border-radius: 10px; font-size: 13px;
+  font-weight: 600; text-decoration: none; border: none;
+}
+.btn-create:hover { background: #1e293b; color: #fff; }
+.page-wrap {
+  flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+  padding: 12px 32px 16px; overflow: hidden; gap: 14px; box-sizing: border-box;
+}
+.stat-row {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; flex-shrink: 0;
+}
+@media (max-width: 1200px) { .stat-row { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+a.stat-card.kpi-soft {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  padding: 14px 16px; text-decoration: none; display: block;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04); min-width: 0;
+  transition: border-color 0.12s;
+}
+a.stat-card.kpi-soft:hover { border-color: #c7d2fe; }
+a.stat-card.kpi-soft.active-filter {
+  border-color: #c7d2fe; box-shadow: 0 0 0 3px rgba(79,70,229,0.08);
+}
+.kpi-soft .kpi-label { font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 6px; }
+.kpi-soft .kpi-value { font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.03em; }
+
+.board-shell {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden;
+}
+.panel-toolbar {
+  padding: 14px 16px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0; background: #fff;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.panel-toolbar input, .panel-toolbar select {
+  height: 36px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 9px;
+  font-size: 13px; font-family: inherit; background: #fff; color: #0f172a;
+}
+.panel-toolbar input { min-width: 180px; flex: 1; max-width: 260px; }
+.panel-toolbar .btn-filter {
+  height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #e2e8f0;
+  background: #fff; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; font-family: inherit;
+  text-decoration: none; display: inline-flex; align-items: center;
+}
+
+.kanban {
+  flex: 1 1 auto; min-height: 0; display: flex; gap: 12px;
+  overflow-x: auto; overflow-y: hidden; padding: 14px 16px 16px;
+  -webkit-overflow-scrolling: touch; background: #fafbfc;
+}
+.kanban-col {
+  flex: 0 0 250px; width: 250px; max-width: 78vw;
+  background: #f8fafc; border: 1px solid #e8ecf1; border-radius: 12px;
+  display: flex; flex-direction: column; min-height: 0; max-height: 100%;
+}
+.kanban-col.drag-over {
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+  background: #f5f3ff;
+}
+.col-hd {
+  padding: 11px 12px; border-bottom: 1px solid #eef2f7;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0;
+  background: #fff; border-radius: 12px 12px 0 0;
+}
+.col-hd h3 {
+  margin: 0; font-size: 12px; font-weight: 700; color: #0f172a;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.col-count {
+  min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px;
+  background: #f1f5f9; color: #475569; font-size: 11.5px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.col-hd[data-stage="lead"] .col-count { background: #dbeafe; color: #1d4ed8; }
+.col-hd[data-stage="contacted"] .col-count { background: #e0e7ff; color: #4338ca; }
+.col-hd[data-stage="qualified"] .col-count { background: #dcfce7; color: #15803d; }
+.col-hd[data-stage="negotiation"] .col-count { background: #ffedd5; color: #c2410c; }
+.col-hd[data-stage="closed"] .col-count { background: #d1fae5; color: #047857; }
+.col-hd[data-stage="lost"] .col-count { background: #fee2e2; color: #b91c1c; }
+.col-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.lead-card {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px;
+  padding: 12px; cursor: grab;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  transition: box-shadow 0.15s, transform 0.15s, opacity 0.15s;
+  user-select: none;
+}
+.lead-card:hover { border-color: #c7d2fe; }
+.lead-card:active { cursor: grabbing; }
+.lead-card.dragging { opacity: 0.5; transform: scale(0.98); }
+.lead-card h4 {
+  margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: #0f172a; line-height: 1.3;
+}
+.lead-card h4 a { color: inherit; text-decoration: none; }
+.lead-card h4 a:hover { color: #4f46e5; }
+.lead-card .meta { font-size: 12px; color: #64748b; margin-bottom: 6px; line-height: 1.4; word-break: break-word; }
+.lead-card .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.tag {
+  font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 6px;
+  background: #f1f5f9; color: #475569;
+}
+.tag.budget { background: #ecfdf5; color: #047857; }
+.tag.agent { background: #eff6ff; color: #1d4ed8; }
+.lead-card .card-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9;
+}
+.lead-card .src { font-size: 11px; color: #94a3b8; font-weight: 500; }
+.lead-card .del {
+  border: none; background: transparent; color: #94a3b8; cursor: pointer;
+  font-size: 11px; font-weight: 600; font-family: inherit; padding: 2px 4px;
+}
+.lead-card .del:hover { color: #b91c1c; }
+.col-body .empty-col {
+  font-size: 12px; color: #94a3b8; text-align: center; padding: 18px 8px;
+  border: 1px dashed #e2e8f0; border-radius: 10px; background: #fff;
+}
+.toast {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(12px);
+  background: #0f172a; color: #fff; padding: 10px 18px; border-radius: 999px;
+  font-size: 13px; font-weight: 500; opacity: 0; transition: 0.22s ease; z-index: 9999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (max-width: 900px) {
+  .page-wrap { padding: 10px 14px 14px; }
+  .top-bar.dash-top { padding: 14px 14px 8px !important; }
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'leads' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+  <header class="top-bar dash-top">
+    <div>
+      <h1 class="page-title">Leads</h1>
+      <p class="page-subtitle">Client pipeline · synced with Clients · drag to update status</p>
+    </div>
+    <div class="top-actions">
+      <a href="{{ url_for('admin.admin_clients') }}" class="btn-export">All clients</a>
+      <a href="{{ url_for('admin.admin_add_lead') }}" class="btn-create">+ Add Lead</a>
+    </div>
+  </header>
+
+  <div class="page-wrap">
+    <div class="stat-row">
+      <a href="{{ url_for('admin.admin_leads') }}" class="stat-card kpi-soft {% if not focus %}active-filter{% endif %}">
+        <div class="kpi-label">Total</div>
+        <div class="kpi-value">{{ stats.total }}</div>
+      </a>
+      {% for st in stages %}
+      <a href="{{ url_for('admin.admin_leads', status=st, q=q, agent_id=agent_id) }}" class="stat-card kpi-soft {% if focus==st %}active-filter{% endif %}">
+        <div class="kpi-label">{{ stage_labels[st] }}</div>
+        <div class="kpi-value">{{ stats[st] }}</div>
+      </a>
+      {% endfor %}
+    </div>
+
+    <div class="board-shell">
+      <form class="panel-toolbar" method="GET" action="{{ url_for('admin.admin_leads') }}">
+        {% if focus %}<input type="hidden" name="status" value="{{ focus }}">{% endif %}
+        <input type="search" name="q" value="{{ q }}" placeholder="Search name, email, phone…">
+        <select name="agent_id">
+          <option value="">All agents</option>
+          {% for a in agents %}
+          <option value="{{ a.id }}" {% if agent_id == a.id|string %}selected{% endif %}>{{ a.full_name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn-filter">Filter</button>
+        {% if q or agent_id or focus %}
+        <a href="{{ url_for('admin.admin_leads') }}" class="btn-filter">Clear</a>
+        {% endif %}
+      </form>
+
+      <div class="kanban" id="kanban">
+        {% for col in columns %}
+        {% if not focus or focus == col.key %}
+        <div class="kanban-col" data-stage="{{ col.key }}">
+          <div class="col-hd" data-stage="{{ col.key }}">
+            <h3>{{ col.label }}</h3>
+            <span class="col-count" data-count-for="{{ col.key }}">{{ col.count }}</span>
+          </div>
+          <div class="col-body" data-stage="{{ col.key }}">
+            {% for lead in col.leads %}
+            <div class="lead-card" draggable="true" data-id="{{ lead.id }}" data-status="{{ lead.status }}">
+              <h4>
+                <a href="{{ url_for('admin.admin_client_detail', client_id=lead.id) }}">{{ lead.full_name }}</a>
+              </h4>
+              <div class="meta">
+                {% if lead.email %}{{ lead.email }}{% endif %}
+                {% if lead.email and lead.phone %} · {% endif %}
+                {% if lead.phone %}{{ lead.phone }}{% endif %}
+                {% if not lead.email and not lead.phone %}—{% endif %}
+              </div>
+              {% if lead.interest or lead.budget or lead.agent_name %}
+              <div class="tags">
+                {% if lead.interest %}<span class="tag">{{ lead.interest }}</span>{% endif %}
+                {% if lead.budget %}<span class="tag budget">{{ format_money(lead.budget, currency) }}</span>{% endif %}
+                {% if lead.agent_name %}<span class="tag agent">{{ lead.agent_name }}</span>{% endif %}
+              </div>
+              {% endif %}
+              <div class="card-foot">
+                <span class="src">{{ lead.source or '—' }}</span>
+                <form method="POST" action="{{ url_for('admin.admin_delete_lead', lead_id=lead.id) }}" onsubmit="return confirm('Remove from pipeline (deletes client record)?');" style="margin:0">
+                  <button type="submit" class="del">Remove</button>
+                </form>
+              </div>
+            </div>
+            {% else %}
+            <div class="empty-col">Drop here</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  var dragged = null;
+  var toastEl = document.getElementById('toast');
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(function(){ toastEl.classList.remove('show'); }, 1800);
+  }
+  function refreshCounts(){
+    document.querySelectorAll('.kanban-col').forEach(function(col){
+      var stage = col.getAttribute('data-stage');
+      var n = col.querySelectorAll('.lead-card').length;
+      var badge = col.querySelector('[data-count-for="'+stage+'"]');
+      if(badge) badge.textContent = n;
+      var body = col.querySelector('.col-body');
+      var empty = body.querySelector('.empty-col');
+      if(n === 0 && !empty){
+        var d = document.createElement('div');
+        d.className = 'empty-col';
+        d.textContent = 'Drop here';
+        body.appendChild(d);
+      } else if(n > 0 && empty){
+        empty.remove();
+      }
+    });
+  }
+  document.querySelectorAll('.lead-card').forEach(function(card){
+    card.addEventListener('dragstart', function(e){
+      dragged = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.getAttribute('data-id'));
+    });
+    card.addEventListener('dragend', function(){
+      card.classList.remove('dragging');
+      document.querySelectorAll('.kanban-col').forEach(function(c){ c.classList.remove('drag-over'); });
+      dragged = null;
+    });
+  });
+  document.querySelectorAll('.kanban-col').forEach(function(col){
+    var body = col.querySelector('.col-body');
+    col.addEventListener('dragover', function(e){
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', function(e){
+      if(!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+    });
+    col.addEventListener('drop', function(e){
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if(!dragged) return;
+      var newStatus = col.getAttribute('data-stage');
+      var id = dragged.getAttribute('data-id');
+      var oldStatus = dragged.getAttribute('data-status');
+      body.appendChild(dragged);
+      if(newStatus === oldStatus){ refreshCounts(); return; }
+      dragged.setAttribute('data-status', newStatus);
+      refreshCounts();
+      fetch('/admin/leads/status/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ status: newStatus })
+      }).then(function(r){ return r.json(); }).then(function(data){
+        if(data && data.ok) toast('Updated · synced to Clients');
+        else toast('Could not update');
+      }).catch(function(){ toast('Network error'); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

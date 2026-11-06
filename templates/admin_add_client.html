@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Add Client</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+html, body { height: 100%; }
+.main-content { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 0 !important; background: #f8fafc; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px !important; background: #fff; border-bottom: 1px solid #e8ecf1;
+  box-shadow: none; gap: 12px; flex-wrap: wrap; flex-shrink: 0;
+}
+.dash-top .page-title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 2px 0 0; }
+.btn-back {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 12px;
+  background: #fff; color: #475569; border: 1px solid #e8ecf1; border-radius: 8px;
+  font-size: 12.5px; font-weight: 600; text-decoration: none;
+}
+.page-wrap {
+  flex: 1; padding: 16px 24px 28px; width: 100%; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center;
+}
+.page-wrap > .panel, .page-wrap > form.panel { width: 100%; max-width: 860px; }
+.panel {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px; overflow: hidden;
+  display: flex; flex-direction: column; margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+}
+.panel-hd {
+  padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc;
+  font-size: 13px; font-weight: 600; color: #0f172a;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.panel-hd span { color: #94a3b8; font-weight: 500; font-size: 11.5px; }
+.panel-bd { padding: 14px 16px; }
+.panel-ft {
+  padding: 10px 16px; border-top: 1px solid #f1f5f9; background: #fafbfc;
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+.sec {
+  font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;
+  letter-spacing: 0.04em; margin: 14px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #f1f5f9;
+}
+.sec:first-child { margin-top: 0; }
+.g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px; }
+.g .s2 { grid-column: span 2; }
+.g .s3 { grid-column: 1 / -1; }
+@media (max-width: 800px) { .g { grid-template-columns: 1fr 1fr; } .g .s2 { grid-column: span 1; } }
+@media (max-width: 480px) { .g { grid-template-columns: 1fr; } }
+.fg { display: flex; flex-direction: column; gap: 3px; }
+.fg label { font-size: 11.5px; font-weight: 600; color: #475569; }
+.fg label .r { color: #dc2626; }
+.fg input, .fg select, .fg textarea {
+  height: 36px; padding: 0 9px; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 13px; font-family: inherit; color: #0f172a; outline: none; width: 100%; box-sizing: border-box;
+}
+.fg textarea { height: 72px; padding: 8px 9px; resize: vertical; }
+.fg select[multiple] { height: auto; min-height: 120px; padding: 8px; }
+.fg input:focus, .fg select:focus, .fg textarea:focus { border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+.btn-cancel {
+  height: 34px; padding: 0 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #64748b; text-decoration: none; display: inline-flex; align-items: center;
+}
+.btn-save {
+  height: 34px; padding: 0 14px; background: #1e1b4b; border: none; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; font-family: inherit;
+}
+.btn-ghost {
+  height: 34px; padding: 0 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #475569; text-decoration: none; display: inline-flex; align-items: center;
+}
+.format-box {
+  background: #0f172a; color: #cbd5e1; border-radius: 8px; padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px; line-height: 1.45; overflow-x: auto; white-space: pre; margin: 0 0 10px; user-select: all;
+}
+.rules { margin: 0 0 12px; padding: 0 0 0 16px; font-size: 12px; color: #64748b; line-height: 1.5; }
+.import-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.import-row input[type="file"] {
+  flex: 1; min-width: 160px; height: 34px; padding: 5px 8px; border: 1px solid #e2e8f0;
+  border-radius: 7px; font-size: 12px; font-family: inherit; background: #fff;
+}
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; background: #f8fafc; border: 1px solid #e8ecf1; border-radius: 10px;
+  margin-bottom: 4px;
+}
+.toggle-row .toggle-text strong { display: block; font-size: 13px; color: #0f172a; }
+.toggle-row .toggle-text span { font-size: 12px; color: #64748b; }
+.switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0; background: #cbd5e1; border-radius: 999px; transition: 0.2s;
+}
+.slider:before {
+  content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px;
+  background: #fff; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 2px rgba(15,23,42,0.15);
+}
+.switch input:checked + .slider { background: #1e1b4b; }
+.switch input:checked + .slider:before { transform: translateX(20px); }
+#makeIdFields { display: none; margin-top: 10px; }
+#makeIdFields.show { display: block; }
+.hint { font-size: 11.5px; color: #94a3b8; margin-top: 2px; }
+.toast-host { position: fixed; left: 0; right: 0; bottom: 22px; z-index: 9999; display: flex; justify-content: center; pointer-events: none; }
+.toast-sphere {
+  pointer-events: auto; background: #0f172a; color: #fff; padding: 11px 20px; border-radius: 999px;
+  font-size: 13px; font-weight: 500; opacity: 0; transform: translateY(16px); transition: 0.25s ease;
+}
+.toast-sphere.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'clients' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+<header class="top-bar dash-top">
+  <div>
+    <h1 class="page-title">Add Client</h1>
+    <p class="page-subtitle">Capture a lead or client · optionally create dashboard login</p>
+  </div>
+  <a href="{{ url_for('admin.admin_clients') }}" class="btn-back">← Back to clients</a>
+</header>
+
+<div class="page-wrap">
+<form method="POST" class="panel" id="addClientForm">
+  <div class="panel-hd">Client details <span>Required fields marked *</span></div>
+  <div class="panel-bd">
+    <p class="sec">Contact</p>
+    <div class="g">
+      <div class="fg s2">
+        <label>Full name <span class="r">*</span></label>
+        <input type="text" name="full_name" required placeholder="Client full name">
+      </div>
+      <div class="fg">
+        <label>Phone</label>
+        <input type="text" name="phone" placeholder="+91 …">
+      </div>
+      <div class="fg s2">
+        <label>Email</label>
+        <input type="email" name="email" id="contactEmail" placeholder="name@email.com">
+      </div>
+      <div class="fg">
+        <label>Preferred city</label>
+        <input type="text" name="preferred_city" placeholder="Mumbai, Delhi…">
+      </div>
+      <div class="fg s3">
+        <label>Address</label>
+        <input type="text" name="address" placeholder="Current / mailing address">
+      </div>
+    </div>
+
+    <p class="sec">Pipeline</p>
+    <div class="g">
+      <div class="fg">
+        <label>Status</label>
+        <select name="status">
+          <option value="lead">Lead</option>
+          <option value="contacted">Contacted</option>
+          <option value="qualified">Qualified</option>
+          <option value="negotiation">Negotiation</option>
+          <option value="closed">Closed</option>
+          <option value="lost">Lost</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Source</label>
+        <input type="text" name="source" placeholder="Website, referral, walk-in…">
+      </div>
+      <div class="fg">
+        <label>Assigned agent</label>
+        <select name="agent_id">
+          <option value="">— Unassigned —</option>
+          {% for a in agents %}
+          <option value="{{ a.id }}">{{ a.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Budget</label>
+        <input type="number" name="budget" min="0" step="any" placeholder="Max budget">
+      </div>
+      <div class="fg s2">
+        <label>Interest</label>
+        <input type="text" name="interest" placeholder="Buy / Rent / 3BHK / Villa…">
+      </div>
+      <div class="fg s3">
+        <label>Notes</label>
+        <textarea name="notes" placeholder="Requirements, timeline, preferences…"></textarea>
+      </div>
+    </div>
+
+    <p class="sec">Properties interested</p>
+    <div class="fg s3" style="margin-bottom:8px">
+      <label>Select properties this client is interested in</label>
+      <select name="property_ids" multiple size="6">
+        {% for p in properties %}
+        <option value="{{ p.id }}">{{ p.title }}{% if p.city %} · {{ p.city }}{% endif %}{% if p.price %} · {{ '{:,.0f}'.format(p.price) }}{% endif %} ({{ p.status }})</option>
+        {% else %}
+        <option disabled>No properties available</option>
+        {% endfor %}
+      </select>
+      <p class="hint">Hold Ctrl/Cmd to select multiple properties</p>
+    </div>
+
+    <p class="sec">Dashboard access</p>
+    <div class="toggle-row">
+      <div class="toggle-text">
+        <strong>Make ID</strong>
+        <span>Create a customer login so they can access the Estacle client portal</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" name="make_id" id="makeIdToggle" value="1">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div id="makeIdFields">
+      <div class="g">
+        <div class="fg s2">
+          <label>Login email <span class="r">*</span></label>
+          <input type="email" name="login_email" id="loginEmail" placeholder="Will default to contact email">
+          <p class="hint">Must be unique. Used to sign in to the dashboard.</p>
+        </div>
+        <div class="fg">
+          <label>Password <span class="r">*</span></label>
+          <input type="text" name="login_password" id="loginPassword" placeholder="Min 6 characters" minlength="6" autocomplete="new-password">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel-ft">
+    <a href="{{ url_for('admin.admin_clients') }}" class="btn-cancel">Cancel</a>
+    <button type="submit" class="btn-save">Create client</button>
+  </div>
+</form>
+
+<!-- Import panel — same pattern as Add Property -->
+<div class="panel" id="import">
+  <div class="panel-hd">Import clients <span>CSV · Excel · full column set</span></div>
+  <div class="panel-bd">
+    <p class="sec" style="margin-top:0">Format (click to select · also printed in terminal)</p>
+    <div class="format-box" id="formatBox">full_name,email,phone,status,source,budget,interest,preferred_city,address,notes,agent_email
+John Doe,john@email.com,+919800000000,lead,Website,5000000,3BHK Buy,Mumbai,Andheri West,,agent@estacle.com
+Sarah Khan,sarah@email.com,+919811122233,qualified,Referral,12000000,Villa,Pune,,,</div>
+    <ul class="rules">
+      <li><strong>full_name</strong> required</li>
+      <li>status: lead · contacted · qualified · negotiation · closed · lost</li>
+      <li>budget optional number · agent_email optional (must match an existing agent)</li>
+      <li>Does not create dashboard logins — use Make ID above for that</li>
+    </ul>
+    <form method="POST" action="{{ url_for('admin.admin_import_clients') }}" enctype="multipart/form-data" class="import-row">
+      <input type="file" name="import_file" accept=".csv,.xlsx,.xls" required>
+      <a href="{{ url_for('admin.admin_clients_import_template') }}" class="btn-ghost">Download template</a>
+      <button type="submit" class="btn-save">Import file</button>
+    </form>
+  </div>
+</div>
+</div>
+</main>
+</div>
+<div class="toast-host" id="toastHost" aria-live="polite"></div>
+<div id="flash-data" style="display:none">
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}{% for category, message in messages %}<span data-msg="{{ message|e }}" data-cat="{{ category }}"></span>{% endfor %}{% endif %}
+{% endwith %}
+</div>
+<script>
+(function(){
+  var toggle = document.getElementById('makeIdToggle');
+  var fields = document.getElementById('makeIdFields');
+  var loginEmail = document.getElementById('loginEmail');
+  var contactEmail = document.getElementById('contactEmail');
+  var loginPassword = document.getElementById('loginPassword');
+  function sync(){
+    var on = toggle.checked;
+    fields.classList.toggle('show', on);
+    loginEmail.required = on;
+    loginPassword.required = on;
+    if(on && !loginEmail.value && contactEmail.value) loginEmail.value = contactEmail.value;
+  }
+  toggle.addEventListener('change', sync);
+  contactEmail.addEventListener('blur', function(){
+    if(toggle.checked && !loginEmail.value) loginEmail.value = contactEmail.value;
+  });
+  sync();
+})();
+document.getElementById('formatBox').addEventListener('click', function() {
+  var r = document.createRange(); r.selectNodeContents(this);
+  var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+});
+(function(){var h=document.getElementById('toastHost'),d=document.getElementById('flash-data');if(!h||!d)return;var i=d.querySelectorAll('span[data-msg]');if(!i.length)return;var e=document.createElement('div');e.className='toast-sphere';e.textContent=i[0].getAttribute('data-msg')||'Done';h.appendChild(e);requestAnimationFrame(function(){e.classList.add('show');});setTimeout(function(){e.classList.add('hide');setTimeout(function(){e.remove();},250);},2800);})();
+// Mirror import format to terminal when page loads (like properties)
+console.log('ESTACLE CLIENT IMPORT FORMAT\n' + document.getElementById('formatBox').textContent);
+</script>
+</body>
+</html>

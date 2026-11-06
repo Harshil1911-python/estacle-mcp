@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Edit Client</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+html, body { height: 100%; }
+.main-content { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 0 !important; background: #f8fafc; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px !important; background: #fff; border-bottom: 1px solid #e8ecf1;
+  box-shadow: none; gap: 12px; flex-wrap: wrap; flex-shrink: 0;
+}
+.dash-top .page-title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 2px 0 0; }
+.btn-back {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 12px;
+  background: #fff; color: #475569; border: 1px solid #e8ecf1; border-radius: 8px;
+  font-size: 12.5px; font-weight: 600; text-decoration: none;
+}
+.page-wrap {
+  flex: 1; padding: 16px 24px 28px; width: 100%; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center;
+}
+.page-wrap > form.panel { width: 100%; max-width: 860px; }
+.panel {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px; overflow: hidden;
+  display: flex; flex-direction: column; margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+}
+.panel-hd {
+  padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc;
+  font-size: 13px; font-weight: 600; color: #0f172a;
+}
+.panel-bd { padding: 14px 16px; }
+.panel-ft {
+  padding: 10px 16px; border-top: 1px solid #f1f5f9; background: #fafbfc;
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+.sec {
+  font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;
+  letter-spacing: 0.04em; margin: 14px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #f1f5f9;
+}
+.sec:first-child { margin-top: 0; }
+.g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px; }
+.g .s2 { grid-column: span 2; }
+.g .s3 { grid-column: 1 / -1; }
+@media (max-width: 800px) { .g { grid-template-columns: 1fr 1fr; } }
+.fg { display: flex; flex-direction: column; gap: 3px; }
+.fg label { font-size: 11.5px; font-weight: 600; color: #475569; }
+.fg label .r { color: #dc2626; }
+.fg input, .fg select, .fg textarea {
+  height: 36px; padding: 0 9px; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 13px; font-family: inherit; color: #0f172a; outline: none; width: 100%; box-sizing: border-box;
+}
+.fg textarea { height: 72px; padding: 8px 9px; resize: vertical; }
+.fg select[multiple] { height: auto; min-height: 120px; padding: 8px; }
+.fg input:focus, .fg select:focus, .fg textarea:focus { border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+.btn-cancel {
+  height: 34px; padding: 0 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #64748b; text-decoration: none; display: inline-flex; align-items: center;
+}
+.btn-save {
+  height: 34px; padding: 0 14px; background: #1e1b4b; border: none; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; font-family: inherit;
+}
+.hint { font-size: 11.5px; color: #94a3b8; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'clients' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+<header class="top-bar dash-top">
+  <div>
+    <h1 class="page-title">Edit Client</h1>
+    <p class="page-subtitle">{{ client.full_name }}</p>
+  </div>
+  <a href="{{ url_for('admin.admin_client_detail', client_id=client.id) }}" class="btn-back">← Back</a>
+</header>
+
+<div class="page-wrap">
+<form method="POST" class="panel">
+  <div class="panel-hd">Client details</div>
+  <div class="panel-bd">
+    <p class="sec">Contact</p>
+    <div class="g">
+      <div class="fg s2">
+        <label>Full name <span class="r">*</span></label>
+        <input type="text" name="full_name" required value="{{ client.full_name or '' }}">
+      </div>
+      <div class="fg">
+        <label>Phone</label>
+        <input type="text" name="phone" value="{{ client.phone or '' }}">
+      </div>
+      <div class="fg s2">
+        <label>Email</label>
+        <input type="email" name="email" value="{{ client.email or '' }}">
+      </div>
+      <div class="fg">
+        <label>Preferred city</label>
+        <input type="text" name="preferred_city" value="{{ client.preferred_city or '' }}">
+      </div>
+      <div class="fg s3">
+        <label>Address</label>
+        <input type="text" name="address" value="{{ client.address or '' }}">
+      </div>
+    </div>
+
+    <p class="sec">Pipeline</p>
+    <div class="g">
+      <div class="fg">
+        <label>Status</label>
+        <select name="status">
+          {% for s in ['lead','contacted','qualified','negotiation','closed','lost'] %}
+          <option value="{{ s }}" {% if client.status == s %}selected{% endif %}>{{ s|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Source</label>
+        <input type="text" name="source" value="{{ client.source or '' }}">
+      </div>
+      <div class="fg">
+        <label>Assigned agent</label>
+        <select name="agent_id">
+          <option value="">— Unassigned —</option>
+          {% for a in agents %}
+          <option value="{{ a.id }}" {% if client.agent_id == a.id %}selected{% endif %}>{{ a.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Budget</label>
+        <input type="number" name="budget" min="0" step="any" value="{{ client.budget if client.budget is not none else '' }}">
+      </div>
+      <div class="fg s2">
+        <label>Interest</label>
+        <input type="text" name="interest" value="{{ client.interest or '' }}">
+      </div>
+      <div class="fg s3">
+        <label>Notes</label>
+        <textarea name="notes">{{ client.notes or '' }}</textarea>
+      </div>
+    </div>
+
+    <p class="sec">Properties interested</p>
+    <div class="fg s3">
+      <label>Select properties</label>
+      <select name="property_ids" multiple size="6">
+        {% for p in properties %}
+        <option value="{{ p.id }}" {% if p.id in selected_props %}selected{% endif %}>
+          {{ p.title }}{% if p.city %} · {{ p.city }}{% endif %}{% if p.price %} · {{ '{:,.0f}'.format(p.price) }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      <p class="hint">Hold Ctrl/Cmd to select multiple</p>
+    </div>
+  </div>
+  <div class="panel-ft">
+    <a href="{{ url_for('admin.admin_client_detail', client_id=client.id) }}" class="btn-cancel">Cancel</a>
+    <button type="submit" class="btn-save">Save changes</button>
+  </div>
+</form>
+</div>
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estacle | {{ prop.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        .main-content { padding-bottom: 40px; }
+        .page-wrap { padding: 4px 28px 28px; max-width: 1100px; }
+        .top-bar.dash-top {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 28px 10px !important; background: transparent; border: none; box-shadow: none; gap: 12px; flex-wrap: wrap;
+        }
+        .dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 2px; letter-spacing: -0.02em; }
+        .dash-top .page-subtitle { font-size: 13px; color: #64748b; margin: 0; }
+        .top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-pill {
+            display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 999px;
+            font-size: 12.5px; font-weight: 600; text-decoration: none; border: 1px solid #e8ecf1;
+            background: #fff; color: #475569; cursor: pointer; font-family: inherit;
+        }
+        .btn-pill:hover { background: #f8fafc; color: #0f172a; }
+        .btn-pill.primary { background: #1e1b4b; color: #fff; border-color: #1e1b4b; }
+        .btn-pill.primary:hover { background: #312e81; color: #fff; }
+        .btn-pill.danger { color: #b91c1c; border-color: #fecaca; }
+        .hero {
+            background: #fff; border: 1px solid #e8ecf1; border-radius: 14px; padding: 18px 20px;
+            margin-bottom: 14px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+        }
+        .hero h2 { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: #0f172a; }
+        .hero .price { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip {
+            display: inline-flex; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+            background: #f1f5f9; color: #334155; text-transform: capitalize;
+        }
+        .chip.available { background: #ecfdf5; color: #047857; }
+        .chip.under_offer { background: #fff7ed; color: #c2410c; }
+        .chip.sold { background: #eef2ff; color: #4338ca; }
+        .chip.rented { background: #f0f9ff; color: #0369a1; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+        .card {
+            background: #fff; border: 1px solid #e8ecf1; border-radius: 14px; overflow: hidden;
+        }
+        .card-hd { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; font-size: 13px; font-weight: 600; color: #0f172a; background: #fafbfc; }
+        .card-bd { padding: 12px 14px; }
+        .info-row {
+            display: flex; justify-content: space-between; gap: 10px; padding: 8px 0;
+            border-bottom: 1px solid #f8fafc; font-size: 13px;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-row .lbl { color: #94a3b8; font-weight: 500; }
+        .info-row .val { color: #0f172a; font-weight: 500; text-align: right; }
+        .desc { font-size: 13.5px; color: #334155; line-height: 1.55; margin: 0; white-space: pre-wrap; }
+        .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+        .photos a { display: block; border-radius: 10px; overflow: hidden; border: 1px solid #e8ecf1; background: #f1f5f9; }
+        .photos img { width: 100%; height: 140px; object-fit: cover; display: block; transition: transform 0.2s; }
+        .photos a:hover img { transform: scale(1.03); }
+        .photos-empty { text-align: center; color: #94a3b8; font-size: 13px; padding: 28px 12px; }
+        .toast-host { position: fixed; left: 0; right: 0; bottom: 24px; z-index: 9999; display: flex; justify-content: center; pointer-events: none; }
+        .toast-sphere {
+            pointer-events: auto; background: #0f172a; color: #fff; padding: 12px 22px; border-radius: 999px;
+            font-size: 13.5px; font-weight: 500; box-shadow: 0 12px 40px rgba(15,23,42,0.35);
+            opacity: 0; transform: translateY(16px); transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .toast-sphere.show { opacity: 1; transform: translateY(0); }
+    
+        .photos .photo-thumb {
+            display: block; width: 100%; padding: 0; border: 1px solid #e8ecf1; border-radius: 10px;
+            overflow: hidden; background: #f1f5f9; cursor: pointer;
+        }
+        .photos .photo-thumb img { width: 100%; height: 140px; object-fit: cover; display: block; }
+        .videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+        .video-item video { width: 100%; max-height: 240px; border-radius: 10px; background: #0f172a; }
+        .media-lightbox {
+            display: none; position: fixed; inset: 0; z-index: 10000;
+            background: rgba(15,23,42,0.75); align-items: center; justify-content: center; padding: 24px;
+        }
+        .media-lightbox.open { display: flex; }
+        .media-lightbox-inner {
+            position: relative; max-width: min(960px, 94vw); max-height: 90vh;
+            background: #0f172a; border-radius: 12px; overflow: hidden;
+        }
+        .media-lightbox-inner img, .media-lightbox-inner video {
+            display: block; max-width: 94vw; max-height: 85vh; margin: 0 auto;
+        }
+        .media-lightbox-close {
+            position: absolute; top: 10px; right: 10px; z-index: 2;
+            width: 36px; height: 36px; border-radius: 999px; border: none;
+            background: rgba(255,255,255,0.95); color: #0f172a; cursor: pointer;
+            font-size: 22px; line-height: 1; font-weight: 600;
+        }
+
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    {% set active = 'properties' %}
+    {% include 'partials/admin_sidebar.html' %}
+    <main class="main-content">
+        <header class="top-bar dash-top">
+            <div>
+                <h1 class="page-title">Property details</h1>
+                <p class="page-subtitle">Listing #{{ prop.id }}</p>
+            </div>
+            <div class="top-actions">
+                <a href="{{ url_for('admin.admin_properties') }}" class="btn-pill">← Properties</a>
+                <a href="{{ url_for('admin.admin_edit_property', prop_id=prop.id) }}" class="btn-pill primary">Edit</a>
+                <form method="POST" action="{{ url_for('admin.admin_delete_property', prop_id=prop.id) }}" style="margin:0" onsubmit="return confirm('Delete this property permanently?');">
+                    <button type="submit" class="btn-pill danger">Delete</button>
+                </form>
+            </div>
+        </header>
+        <div class="page-wrap">
+            <div id="flash-data" style="display:none">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}{% for category, message in messages %}<span data-msg="{{ message|e }}"></span>{% endfor %}{% endif %}
+            {% endwith %}
+            </div>
+
+            <div class="hero">
+                <div>
+                    <h2>{{ prop.title }}</h2>
+                    <p class="price">{{ format_money(prop.price, currency) }}{% if prop.listing_type == 'rent' %} <span style="font-size:13px;font-weight:500;color:#64748b">/ rent</span>{% endif %}</p>
+                    <div class="chips">
+                        <span class="chip {{ prop.status }}">{{ (prop.status or 'available')|replace('_',' ') }}</span>
+                        <span class="chip">{{ prop.listing_type or 'sale' }}</span>
+                        <span class="chip">{{ prop.property_type or '—' }}</span>
+                        {% if prop.city %}<span class="chip">{{ prop.city }}</span>{% endif %}
+                    </div>
+                </div>
+                <div style="text-align:right;font-size:13px;color:#64748b;">
+                    <div>Agent: <strong style="color:#0f172a">{{ prop.agent_name or 'Unassigned' }}</strong></div>
+                    {% if prop.created_at %}<div style="margin-top:4px">Listed {{ prop.created_at[:10] }}</div>{% endif %}
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-hd">Key facts</div>
+                    <div class="card-bd">
+                        <div class="info-row"><span class="lbl">Bedrooms</span><span class="val">{{ prop.bedrooms if prop.bedrooms is not none else '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Bathrooms</span><span class="val">{{ prop.bathrooms if prop.bathrooms is not none else '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Built-up area</span><span class="val">{% if prop.area_sqft %}{{ prop.area_sqft }} sqft{% else %}—{% endif %}</span></div>
+                        <div class="info-row"><span class="lbl">Carpet area</span><span class="val">{% if prop.carpet_area %}{{ prop.carpet_area }} sqft{% else %}—{% endif %}</span></div>
+                        <div class="info-row"><span class="lbl">Floor</span><span class="val">{{ prop.floor or '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Furnishing</span><span class="val">{{ prop.furnishing or '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Parking</span><span class="val">{{ prop.parking or '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Facing</span><span class="val">{{ prop.facing or '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Year built</span><span class="val">{{ prop.year_built or '—' }}</span></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-hd">Pricing & location</div>
+                    <div class="card-bd">
+                        <div class="info-row"><span class="lbl">List price</span><span class="val">{{ format_money(prop.price, currency) }}</span></div>
+                        <div class="info-row"><span class="lbl">Per sqft</span><span class="val">{% if prop.per_sqft %}{{ format_money(prop.per_sqft, currency) }}{% else %}—{% endif %}</span></div>
+                        <div class="info-row"><span class="lbl">Monthly rent</span><span class="val">{% if prop.monthly_rent %}{{ format_money(prop.monthly_rent, currency) }}{% else %}—{% endif %}</span></div>
+                        <div class="info-row"><span class="lbl">Security deposit</span><span class="val">{% if prop.security_deposit %}{{ format_money(prop.security_deposit, currency) }}{% else %}—{% endif %}</span></div>
+                        <div class="info-row"><span class="lbl">Maintenance</span><span class="val">{% if prop.maintenance %}{{ format_money(prop.maintenance, currency) }}{% else %}—{% endif %}</span></div>
+                        <div class="info-row"><span class="lbl">Address</span><span class="val">{{ prop.address or '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">City / State</span><span class="val">{{ prop.city or '—' }}{% if prop.state %}, {{ prop.state }}{% endif %}</span></div>
+                        <div class="info-row"><span class="lbl">Postal code</span><span class="val">{{ prop.zip_code or '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Coordinates</span><span class="val">{% if prop.latitude and prop.longitude %}{{ prop.latitude }}, {{ prop.longitude }}{% else %}—{% endif %}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-hd">Seller / owner</div>
+                    <div class="card-bd">
+                        <div class="info-row"><span class="lbl">Name</span><span class="val">{{ prop.seller_name or '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Phone</span><span class="val">{{ prop.seller_phone or '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Category</span><span class="val">{{ prop.category or '—' }}</span></div>
+                        <div class="info-row"><span class="lbl">Amenities</span><span class="val">{{ prop.amenities or '—' }}</span></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-hd">Description</div>
+                    <div class="card-bd">
+                        <p class="desc">{{ prop.description or 'No description provided.' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-hd">Photos{% if photos %} <span style="font-weight:500;color:#94a3b8;font-size:12px">{{ photos|length }}</span>{% endif %}</div>
+                <div class="card-bd">
+                    {% if photos %}
+                    <div class="photos">
+                        {% for ph in photos %}
+                        <button type="button" class="photo-thumb" onclick="openMediaLightbox('{{ url_for('static', filename='uploads/properties/' + ph) }}', 'image')">
+                            <img src="{{ url_for('static', filename='uploads/properties/' + ph) }}" alt="Property photo {{ loop.index }}" loading="lazy">
+                        </button>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="photos-empty">No photos uploaded for this listing.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:12px">
+                <div class="card-hd">Videos{% if videos %} <span style="font-weight:500;color:#94a3b8;font-size:12px">{{ videos|length }}</span>{% endif %}</div>
+                <div class="card-bd">
+                    {% if videos %}
+                    <div class="videos">
+                        {% for vd in videos %}
+                        <div class="video-item">
+                            <video src="{{ url_for('static', filename='uploads/properties/' + vd) }}" controls playsinline preload="metadata"></video>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="photos-empty">No videos uploaded for this listing.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<div class="toast-host" id="toastHost" aria-live="polite"></div>
+<script>
+(function() {
+    var host = document.getElementById('toastHost'), data = document.getElementById('flash-data');
+    if (!host || !data) return;
+    var items = data.querySelectorAll('span[data-msg]');
+    if (!items.length) return;
+    var el = document.createElement('div'); el.className = 'toast-sphere';
+    el.textContent = items[0].getAttribute('data-msg') || 'Done';
+    host.appendChild(el);
+    requestAnimationFrame(function() { el.classList.add('show'); });
+    setTimeout(function() { el.classList.add('hide'); setTimeout(function() { el.remove(); }, 250); }, 2800);
+})();
+</script>
+
+<div class="media-lightbox" id="mediaLightbox" onclick="if(event.target===this)closeMediaLightbox()">
+  <div class="media-lightbox-inner">
+    <button type="button" class="media-lightbox-close" onclick="closeMediaLightbox()" aria-label="Close">&times;</button>
+    <div id="mediaLightboxContent"></div>
+  </div>
+</div>
+<script>
+function openMediaLightbox(src, type) {
+  var box = document.getElementById('mediaLightbox');
+  var content = document.getElementById('mediaLightboxContent');
+  if (!box || !content) return;
+  content.innerHTML = '';
+  if (type === 'video') {
+    var v = document.createElement('video');
+    v.src = src; v.controls = true; v.autoplay = true; v.playsInline = true;
+    content.appendChild(v);
+  } else {
+    var img = document.createElement('img');
+    img.src = src; img.alt = 'Property media';
+    content.appendChild(img);
+  }
+  box.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeMediaLightbox() {
+  var box = document.getElementById('mediaLightbox');
+  var content = document.getElementById('mediaLightboxContent');
+  if (content) content.innerHTML = '';
+  if (box) box.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeMediaLightbox(); });
+</script>
+
+</body>
+</html>

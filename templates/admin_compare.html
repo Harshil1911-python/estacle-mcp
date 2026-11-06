@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estacle | Compare Properties</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        .main-content {
+            min-height: 100vh; padding-bottom: 40px; background: transparent !important;
+        }
+        .top-bar.dash-top {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 32px 10px !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            gap: 12px; flex-wrap: wrap;
+        }
+        .dash-top .page-title {
+            font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; letter-spacing: -0.02em;
+        }
+        .dash-top .page-subtitle { font-size: 13px; color: #64748b; margin: 0; }
+        .top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-pill {
+            display: inline-flex; align-items: center; height: 36px; padding: 0 14px;
+            border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none;
+            border: 1px solid #e2e8f0; background: #fff; color: #334155; cursor: pointer; font-family: inherit;
+        }
+        .btn-pill:hover { background: #f8fafc; }
+        .btn-pill.primary { background: #0f172a; color: #fff; border-color: #0f172a; }
+        .btn-pill.primary:hover { background: #1e293b; color: #fff; }
+        .page-wrap { padding: 12px 32px 32px; max-width: 1280px; }
+
+        .picker-card {
+            background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+            box-shadow: 0 1px 2px rgba(15,23,42,0.04); padding: 18px 18px 16px; margin-bottom: 18px;
+        }
+        .picker-card h2 {
+            font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 14px;
+            text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .picker-grid {
+            display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;
+        }
+        @media (max-width: 900px) { .picker-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 520px) { .picker-grid { grid-template-columns: 1fr; } }
+        .picker-grid label {
+            display: block; font-size: 11.5px; font-weight: 600; color: #64748b; margin-bottom: 5px;
+        }
+        .picker-grid select {
+            width: 100%; height: 40px; padding: 0 10px; border: 1px solid #e2e8f0;
+            border-radius: 10px; font-size: 13px; font-family: inherit; color: #0f172a;
+            background: #fff; outline: none; box-sizing: border-box;
+        }
+        .picker-grid select:focus {
+            border-color: #94a3b8; box-shadow: 0 0 0 2px rgba(15,23,42,0.06);
+        }
+        .picker-actions {
+            display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center;
+        }
+        .hint { font-size: 12.5px; color: #94a3b8; margin-left: auto; }
+
+        .compare-empty {
+            background: #fff; border: 1px dashed #e2e8f0; border-radius: 14px;
+            padding: 48px 24px; text-align: center; color: #94a3b8;
+        }
+        .compare-empty strong { display: block; color: #0f172a; font-size: 15px; margin-bottom: 6px; }
+
+        .compare-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .compare-table {
+            width: 100%; min-width: 640px; border-collapse: collapse;
+            background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+            overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+        }
+        .compare-table th, .compare-table td {
+            padding: 12px 14px; text-align: left; vertical-align: top;
+            border-bottom: 1px solid #f1f5f9; font-size: 13px;
+        }
+        .compare-table th {
+            background: #fafbfc; font-weight: 600; color: #0f172a;
+            border-bottom: 1px solid #e8ecf1;
+        }
+        .compare-table td.field-label {
+            width: 140px; color: #64748b; font-weight: 500; background: #fafbfc;
+            white-space: nowrap; position: sticky; left: 0; z-index: 1;
+        }
+        .compare-table tr:last-child td { border-bottom: none; }
+        .col-head {
+            min-width: 180px;
+        }
+        .col-photo {
+            width: 100%; height: 120px; object-fit: cover; border-radius: 10px;
+            background: #f1f5f9; display: block; margin-bottom: 10px;
+        }
+        .col-photo-empty {
+            width: 100%; height: 120px; border-radius: 10px; background: #f1f5f9;
+            display: flex; align-items: center; justify-content: center;
+            color: #94a3b8; font-size: 12px; margin-bottom: 10px;
+        }
+        .col-title { font-size: 14px; font-weight: 700; color: #0f172a; line-height: 1.3; margin: 0 0 4px; }
+        .col-meta { font-size: 12px; color: #64748b; margin: 0 0 8px; }
+        .col-price { font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
+        .badge {
+            display: inline-block; font-size: 11px; font-weight: 600; text-transform: capitalize;
+            padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #475569;
+        }
+        .badge.available { background: #ecfdf5; color: #047857; }
+        .badge.under_offer { background: #fff7ed; color: #c2410c; }
+        .badge.sold { background: #f1f5f9; color: #334155; }
+        .val { font-weight: 600; color: #0f172a; }
+        .val.diff { background: #fffbeb; box-shadow: inset 0 0 0 1px #fde68a; border-radius: 6px; padding: 4px 6px; }
+        .link-detail {
+            font-size: 12.5px; font-weight: 600; color: #0f172a; text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    {% set active = 'compare' %}
+    {% include 'partials/admin_sidebar.html' %}
+    <main class="main-content">
+        <header class="top-bar dash-top">
+            <div>
+                <h1 class="page-title">Compare Properties</h1>
+                <p class="page-subtitle">Side-by-side comparison for client presentations · up to 4 listings</p>
+            </div>
+            <div class="top-actions">
+                <a href="{{ url_for('admin.admin_display_properties') }}" class="btn-pill">Display board</a>
+                <a href="{{ url_for('admin.admin_properties') }}" class="btn-pill">All properties</a>
+            </div>
+        </header>
+
+        <div class="page-wrap">
+            <div class="picker-card">
+                <h2>Select listings</h2>
+                <form method="GET" action="{{ url_for('admin.admin_compare') }}">
+                    <div class="picker-grid">
+                        {% for i in range(4) %}
+                        <div>
+                            <label>Property {{ i + 1 }}</label>
+                            <select name="ids">
+                                <option value="">— Choose —</option>
+                                {% for p in all_props %}
+                                <option value="{{ p.id }}"
+                                    {% if selected_ids and i < selected_ids|length and selected_ids[i] == p.id %}selected{% endif %}>
+                                    {{ p.title }}{% if p.city %} · {{ p.city }}{% endif %}
+                                    · {{ p.property_type or '' }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="picker-actions">
+                        <button type="submit" class="btn-pill primary">Compare</button>
+                        <a href="{{ url_for('admin.admin_compare') }}" class="btn-pill">Clear</a>
+                        <span class="hint">Leave slots empty if you need fewer than 4</span>
+                    </div>
+                </form>
+            </div>
+
+            {% if props and props|length > 0 %}
+            <div class="compare-scroll">
+                <table class="compare-table">
+                    <thead>
+                        <tr>
+                            <th class="field-label">Overview</th>
+                            {% for p in props %}
+                            {% set photos = (p.photos or '').split(',') if p.photos else [] %}
+                            {% set cover = photos[0].strip() if photos and photos[0].strip() else none %}
+                            <th class="col-head">
+                                {% if cover %}
+                                <img class="col-photo" src="{{ url_for('static', filename='uploads/properties/' + cover) }}" alt="">
+                                {% else %}
+                                <div class="col-photo-empty">No photo</div>
+                                {% endif %}
+                                <p class="col-title">{{ p.title }}</p>
+                                <p class="col-meta">#{{ p.id }} · {{ p.city or '—' }}</p>
+                                <p class="col-price">{{ format_money(p.price, currency) }}{% if p.listing_type == 'rent' %} <span style="font-size:12px;font-weight:500;color:#64748b">/mo</span>{% endif %}</p>
+                                <span class="badge {{ p.status }}">{{ (p.status or 'available')|replace('_',' ') }}</span>
+                                <div style="margin-top:10px">
+                                    <a class="link-detail" href="{{ url_for('admin.admin_property_detail', prop_id=p.id) }}">Open details</a>
+                                </div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set money_keys = ['price', 'per_sqft', 'monthly_rent', 'security_deposit', 'maintenance'] %}
+                        {% set rows = [
+                            ('Purpose', 'listing_type'),
+                            ('Type', 'property_type'),
+                            ('Category', 'category'),
+                            ('Price', 'price'),
+                            ('Per sqft', 'per_sqft'),
+                            ('Monthly rent', 'monthly_rent'),
+                            ('Deposit', 'security_deposit'),
+                            ('Maintenance', 'maintenance'),
+                            ('Bedrooms', 'bedrooms'),
+                            ('Bathrooms', 'bathrooms'),
+                            ('Built-up (sqft)', 'area_sqft'),
+                            ('Carpet (sqft)', 'carpet_area'),
+                            ('Floor', 'floor'),
+                            ('Furnishing', 'furnishing'),
+                            ('Parking', 'parking'),
+                            ('Facing', 'facing'),
+                            ('Year built', 'year_built'),
+                            ('Amenities', 'amenities'),
+                            ('Address', 'address'),
+                            ('City', 'city'),
+                            ('State', 'state'),
+                            ('Postal', 'zip_code'),
+                            ('Agent', 'agent_name'),
+                            ('Seller', 'seller_name'),
+                            ('Seller phone', 'seller_phone'),
+                        ] %}
+                        {% for label, key in rows %}
+                        <tr>
+                            <td class="field-label">{{ label }}</td>
+                            {% for p in props %}
+                            <td>
+                                {% if key in money_keys %}
+                                    <span class="val">{% if p.get(key) is not none and p.get(key) != '' %}{{ format_money(p.get(key), currency) }}{% else %}—{% endif %}</span>
+                                {% else %}
+                                    <span class="val">{{ p.get(key) if p.get(key) is not none and p.get(key) != '' else '—' }}</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                            <td class="field-label">Description</td>
+                            {% for p in props %}
+                            <td style="font-weight:500;color:#334155;white-space:pre-wrap;max-width:240px">{{ p.description or '—' }}</td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="compare-empty">
+                <strong>No listings selected</strong>
+                Choose 2–4 properties above and click Compare to open a side-by-side sheet for clients.
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+</body>
+</html>

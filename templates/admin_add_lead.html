@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Add Lead</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+html, body { height: 100%; }
+.main-content { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 0 !important; background: transparent !important; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important; background: transparent !important;
+  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap; flex-shrink: 0;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; letter-spacing: -0.02em; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
+.btn-back {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  background: #fff; color: #475569; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.page-wrap {
+  flex: 1; padding: 12px 32px 28px; width: 100%; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center;
+}
+.page-wrap > form.panel { width: 100%; max-width: 860px; }
+.panel {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px; overflow: hidden;
+  display: flex; flex-direction: column; margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+}
+.panel-hd {
+  padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc;
+  font-size: 13px; font-weight: 600; color: #0f172a;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.panel-hd span { color: #94a3b8; font-weight: 500; font-size: 11.5px; }
+.panel-bd { padding: 14px 16px; }
+.panel-ft {
+  padding: 10px 16px; border-top: 1px solid #f1f5f9; background: #fafbfc;
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+.sec {
+  font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;
+  letter-spacing: 0.04em; margin: 14px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #f1f5f9;
+}
+.sec:first-child { margin-top: 0; }
+.g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px; }
+.g .s2 { grid-column: span 2; }
+.g .s3 { grid-column: 1 / -1; }
+@media (max-width: 800px) { .g { grid-template-columns: 1fr 1fr; } .g .s2 { grid-column: span 1; } }
+@media (max-width: 480px) { .g { grid-template-columns: 1fr; } }
+.fg { display: flex; flex-direction: column; gap: 3px; }
+.fg label { font-size: 11.5px; font-weight: 600; color: #475569; }
+.fg label .r { color: #dc2626; }
+.fg input, .fg select, .fg textarea {
+  height: 36px; padding: 0 9px; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 13px; font-family: inherit; color: #0f172a; outline: none; width: 100%; box-sizing: border-box;
+}
+.fg textarea { height: 72px; padding: 8px 9px; resize: vertical; }
+.fg input:focus, .fg select:focus, .fg textarea:focus { border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+.btn-cancel {
+  height: 34px; padding: 0 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #64748b; text-decoration: none; display: inline-flex; align-items: center;
+}
+.btn-save {
+  height: 34px; padding: 0 14px; background: #0f172a; border: none; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; font-family: inherit;
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'leads' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+<header class="top-bar dash-top">
+  <div>
+    <h1 class="page-title">Add Lead</h1>
+    <p class="page-subtitle">Capture a new inquiry into the pipeline</p>
+  </div>
+  <a href="{{ url_for('admin.admin_leads') }}" class="btn-back">← Back to leads</a>
+</header>
+
+<div class="page-wrap">
+<form method="POST" class="panel">
+  <div class="panel-hd">Lead details <span>Required fields marked *</span></div>
+  <div class="panel-bd">
+    <p class="sec">Contact</p>
+    <div class="g">
+      <div class="fg s2">
+        <label>Full name <span class="r">*</span></label>
+        <input type="text" name="full_name" required placeholder="Lead full name">
+      </div>
+      <div class="fg">
+        <label>Phone</label>
+        <input type="text" name="phone" placeholder="+91 …">
+      </div>
+      <div class="fg s2">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="name@email.com">
+      </div>
+      <div class="fg">
+        <label>Source</label>
+        <select name="source">
+          <option value="website">Website</option>
+          <option value="referral">Referral</option>
+          <option value="walkin">Walk-in</option>
+          <option value="social">Social</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="sec">Interest & pipeline</p>
+    <div class="g">
+      <div class="fg">
+        <label>Interest</label>
+        <input type="text" name="interest" placeholder="Buy / Rent / 3BHK / Area">
+      </div>
+      <div class="fg">
+        <label>Budget</label>
+        <input type="number" name="budget" min="0" step="any" placeholder="Max budget">
+      </div>
+      <div class="fg">
+        <label>Status</label>
+        <select name="status">
+          {% for s in stages %}
+          <option value="{{ s }}">{{ stage_labels[s] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Assign agent</label>
+        <select name="assigned_to">
+          <option value="">— Unassigned —</option>
+          {% for a in agents %}
+          <option value="{{ a.id }}">{{ a.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg s3">
+        <label>Notes</label>
+        <textarea name="notes" placeholder="Requirements, timeline, preferences…"></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="panel-ft">
+    <a href="{{ url_for('admin.admin_leads') }}" class="btn-cancel">Cancel</a>
+    <button type="submit" class="btn-save">Save lead</button>
+  </div>
+</form>
+</div>
+</main>
+</div>
+</body>
+</html>
