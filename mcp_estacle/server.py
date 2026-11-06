@@ -7,13 +7,19 @@ import json
 import os
 from typing import Any, Optional
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.mcpserver import MCPServer as _Server
+except ImportError:
+    try:
+        from mcp.server import MCPServer as _Server
+    except ImportError:
+        from mcp.server.fastmcp import FastMCP as _Server  # mcp v1 fallback
 
 from mcp_estacle.context import get_user
 from core import crm_service as crm
 
-mcp = FastMCP(
-    name="Estacle CRM",
+mcp = _Server(
+    "Estacle CRM",
     instructions=(
         "You are connected to Estacle, a real-estate CRM by TechSerenia. "
         "Use tools to create, read, and update CRM records in the live database. "
@@ -338,10 +344,19 @@ def get_property_inventory_report() -> str:
 
 
 def create_mcp_asgi_app():
-    """Return Starlette ASGI app for Streamable HTTP MCP."""
-    # FastMCP exposes streamable_http_app() in recent MCP SDK versions
-    if hasattr(mcp, "streamable_http_app"):
-        return mcp.streamable_http_app()
-    if hasattr(mcp, "sse_app"):
-        return mcp.sse_app()
-    raise RuntimeError("Installed mcp package does not expose streamable_http_app or sse_app")
+    """Return Starlette ASGI app for Streamable HTTP MCP (mcp v1 + v2)."""
+    for name in ("streamable_http_app", "http_app", "sse_app"):
+        fn = getattr(mcp, name, None)
+        if callable(fn):
+            try:
+                return fn()
+            except TypeError:
+                # some versions require path/transport kwargs with defaults
+                try:
+                    return fn(transport="streamable-http")
+                except TypeError:
+                    return fn
+    raise RuntimeError(
+        "Installed mcp package has no streamable_http_app/http_app/sse_app. "
+        "Install mcp>=2.0 or mcp<2 with FastMCP."
+    )

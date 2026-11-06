@@ -29,8 +29,11 @@ from app import create_app as create_flask_app
 from core.oauth_store import ensure_oauth_tables, get_user_for_token
 from mcp_estacle.context import set_user
 
-# Flask WSGI → ASGI
-from starlette.middleware.wsgi import WSGIMiddleware
+# Flask WSGI → ASGI (a2wsgi preferred; Starlette WSGIMiddleware is deprecated)
+try:
+    from a2wsgi import WSGIMiddleware
+except ImportError:
+    from starlette.middleware.wsgi import WSGIMiddleware
 
 flask_app = create_flask_app()
 

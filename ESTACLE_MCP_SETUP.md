@@ -15,7 +15,7 @@ SQLite instance/estacle.db       ← Same DB as the web app
 ```
 
 - **Web UI** remains Flask (`routes/`, templates).
-- **MCP** uses the official Python MCP SDK (`mcp.server.fastmcp`) with Streamable HTTP.
+- **MCP** uses the official Python MCP SDK v2 (`MCPServer`) with Streamable HTTP.
 - **Tools** call `core/crm_service.py`, which reads/writes the **same** SQLite tables as the website.
 - **Auth**: each employee signs in with their Estacle **admin/agent** account; Claude stores a Bearer token.
 
