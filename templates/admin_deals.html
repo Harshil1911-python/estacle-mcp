@@ -83,6 +83,11 @@ table.deals-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   height: 32px; padding: 0 8px; border: 1px solid #e2e8f0; border-radius: 8px;
   font-size: 12px; font-family: inherit; background: #fff; color: #0f172a;
 }
+.stamp-closed {
+  display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #fff; background: #000; padding: 3px 8px; border-radius: 2px;
+  margin-left: 6px; vertical-align: middle;
+}
 </style>
 </head>
 <body>
@@ -164,12 +169,13 @@ table.deals-table { width: 100%; border-collapse: collapse; font-size: 13px; }
               <td>{{ format_money(d.value or 0, currency) }}</td>
               <td>{{ d.commission_rate or 0 }}% → {{ format_money(d.commission_amount or 0, currency) }}</td>
               <td>
-                <form method="POST" action="{{ url_for('admin.admin_deal_stage', deal_id=d.id) }}" style="margin:0">
+                <form method="POST" action="{{ url_for('admin.admin_deal_stage', deal_id=d.id) }}" style="margin:0;display:inline-flex;align-items:center;gap:6px">
                   <select name="stage" class="stage-select" onchange="this.form.submit()">
                     {% for s in stages %}
                     <option value="{{ s }}" {% if d.stage==s %}selected{% endif %}>{{ stage_labels[s] }}</option>
                     {% endfor %}
                   </select>
+                  {% if d.stage == 'closed' %}<span class="stamp-closed">Closed</span>{% endif %}
                 </form>
               </td>
               <td>{{ d.expected_close or '—' }}</td>

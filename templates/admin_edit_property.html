@@ -94,7 +94,7 @@
                         <div class="fg"><label>Status</label><select name="status"><option value="available" {% if (prop.status or '') == 'available' %}selected{% endif %}>Available</option>
 <option value="under_offer" {% if (prop.status or '') == 'under_offer' %}selected{% endif %}>Under offer</option>
 <option value="sold" {% if (prop.status or '') == 'sold' %}selected{% endif %}>Sold</option>
-<option value="rented" {% if (prop.status or '') == 'rented' %}selected{% endif %}>Rented</option></select></div>
+<option value="leased">Leased</option><option value="rented" {% if (prop.status or '') == 'rented' %}selected{% endif %}>Rented</option></select></div>
                         <div class="fg"><label>Listing type</label><select name="listing_type"><option value="sale" {% if (prop.listing_type or '') == 'sale' %}selected{% endif %}>Sale</option>
 <option value="rent" {% if (prop.listing_type or '') == 'rent' %}selected{% endif %}>Rent</option></select></div>
                         <div class="fg"><label>Property type</label><select name="property_type"><option value="apartment" {% if (prop.property_type or '') == 'apartment' %}selected{% endif %}>Apartment</option>

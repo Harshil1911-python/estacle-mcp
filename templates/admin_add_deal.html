@@ -103,20 +103,22 @@ html, body { height: 100%; }
       </div>
       <div class="fg">
         <label>Deal type</label>
-        <select name="deal_type">
+        <select name="deal_type" id="dealType">
           <option value="">— Select —</option>
           <option value="Sale">Sale</option>
           <option value="Rent">Rent</option>
           <option value="Lease">Lease</option>
-          <option value="Resale">Resale</option>
         </select>
       </div>
       <div class="fg">
         <label>Property</label>
-        <select name="property_id">
+        <select name="property_id" id="dealProperty">
           <option value="">— Unlinked —</option>
           {% for p in properties %}
-          <option value="{{ p.id }}">{{ p.title }}</option>
+          <option value="{{ p.id }}"
+            data-price="{{ p.price or 0 }}"
+            data-listing="{{ p.listing_type or 'sale' }}"
+            data-agent="{{ p.agent_id or '' }}">{{ p.title }}</option>
           {% endfor %}
         </select>
       </div>
@@ -131,7 +133,7 @@ html, body { height: 100%; }
       </div>
       <div class="fg">
         <label>Agent</label>
-        <select name="agent_id">
+        <select name="agent_id" id="dealAgent">
           <option value="">— Unassigned —</option>
           {% for a in agents %}
           <option value="{{ a.id }}">{{ a.full_name }}</option>
@@ -144,7 +146,7 @@ html, body { height: 100%; }
     <div class="g">
       <div class="fg">
         <label>Deal value</label>
-        <input type="number" name="value" step="any" min="0" placeholder="5000000">
+        <input type="number" name="value" id="dealValue" step="any" min="0" placeholder="Auto from property · editable">
       </div>
       <div class="fg">
         <label>Commission rate (%)</label>
@@ -227,5 +229,44 @@ Office Park lease,negotiation,120000,5,,Tech Park Wing B,Sarah Khan,,,Follow-up 
 </div>
 </main>
 </div>
+
+<script>
+(function(){
+  var sel = document.getElementById('dealProperty');
+  var val = document.getElementById('dealValue');
+  var typeSel = document.getElementById('dealType');
+  var agentSel = document.getElementById('dealAgent');
+  if (!sel) return;
+  var valueEdited = false;
+  var typeEdited = false;
+  var agentEdited = false;
+  if (val) val.addEventListener('input', function(){ valueEdited = true; });
+  if (typeSel) typeSel.addEventListener('change', function(){ typeEdited = true; });
+  if (agentSel) agentSel.addEventListener('change', function(){ agentEdited = true; });
+  function mapListing(lt) {
+    lt = (lt || 'sale').toLowerCase();
+    if (lt === 'rent' || lt === 'rental') return 'Rent';
+    if (lt === 'lease' || lt === 'leased') return 'Lease';
+    return 'Sale';
+  }
+  sel.addEventListener('change', function(){
+    var opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+    var price = parseFloat(opt.getAttribute('data-price') || '0');
+    if (val && !isNaN(price) && price > 0 && !valueEdited) val.value = price;
+    var listing = opt.getAttribute('data-listing') || 'sale';
+    if (typeSel && !typeEdited) {
+      var mapped = mapListing(listing);
+      for (var i = 0; i < typeSel.options.length; i++) {
+        if (typeSel.options[i].value === mapped) { typeSel.selectedIndex = i; break; }
+      }
+    }
+    var agentId = opt.getAttribute('data-agent') || '';
+    if (agentSel && !agentEdited && agentId) {
+      agentSel.value = agentId;
+    }
+  });
+})();
+</script>
 </body>
 </html>

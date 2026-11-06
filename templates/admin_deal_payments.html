@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Track Payment</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important; background: transparent !important;
+  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
+.btn-export {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  background: #fff; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.page-wrap { padding: 12px 32px 28px; }
+.panel-card {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04); overflow: hidden;
+}
+.panel-toolbar {
+  padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.panel-toolbar input {
+  height: 36px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 9px;
+  font-size: 13px; font-family: inherit; min-width: 200px; flex: 1; max-width: 280px;
+}
+.btn-filter {
+  height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #e2e8f0;
+  background: #fff; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer;
+  font-family: inherit; text-decoration: none; display: inline-flex; align-items: center;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+th { background: #fafbfc; font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+.bar {
+  height: 6px; background: #e5e5e5; border-radius: 2px; overflow: hidden; min-width: 80px; max-width: 120px;
+}
+.bar > span { display: block; height: 100%; background: #111; border-radius: 2px; }
+.btn-sm { font-size: 12px; font-weight: 600; color: #111; text-decoration: underline; text-underline-offset: 2px; }
+.empty { text-align: center; color: #737373; padding: 28px; }
+.stamp-closed {
+  display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #fff; background: #000; padding: 3px 8px; border-radius: 2px;
+}
+.stamp-open {
+  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: #111; background: #f5f5f5; border: 1px solid #d4d4d4; padding: 3px 8px; border-radius: 2px;
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'deal_payments' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+  <header class="top-bar dash-top">
+    <div>
+      <h1 class="page-title">Track Payment</h1>
+      <p class="page-subtitle">Customer payments against deal value</p>
+    </div>
+    <a href="{{ url_for('admin.admin_deals') }}" class="btn-export">All deals</a>
+  </header>
+  <div class="page-wrap">
+    <div class="panel-card">
+      <div class="panel-toolbar">
+        <form method="GET" action="{{ url_for('admin.admin_track_payments') }}" style="display:flex;flex-wrap:wrap;gap:10px;width:100%;align-items:center">
+          <input type="search" name="q" value="{{ q }}" placeholder="Search deal, client, property">
+          <button type="submit" class="btn-filter">Filter</button>
+          {% if q %}<a href="{{ url_for('admin.admin_track_payments') }}" class="btn-filter">Clear</a>{% endif %}
+        </form>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Deal</th>
+            <th>Client</th>
+            <th>Deal value</th>
+            <th>Paid</th>
+            <th>Balance</th>
+            <th>Progress</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in deals %}
+          <tr>
+            <td>
+              <strong>{{ d.title }}</strong>
+              <div style="margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                {% if d.stage == 'closed' %}
+                <span class="stamp-closed">Closed</span>
+                {% else %}
+                <span class="stamp-open">{{ stage_labels.get(d.stage, d.stage) }}</span>
+                {% endif %}
+                {% if d.property_title %}<span style="font-size:11.5px;color:#737373">{{ d.property_title }}</span>{% endif %}
+              </div>
+            </td>
+            <td>{{ d.client_name or '—' }}</td>
+            <td>{{ format_money(d.value or 0, currency) }}</td>
+            <td>{{ format_money(d.paid or 0, currency) }}</td>
+            <td>{{ format_money(d.balance or 0, currency) }}</td>
+            <td>
+              <div class="bar" title="{{ d.pct }}%">
+                <span style="width: {{ [d.pct, 100]|min }}%"></span>
+              </div>
+              <div style="font-size:11px;color:#525252;margin-top:3px">{{ d.pct }}%</div>
+            </td>
+            <td><a class="btn-sm" href="{{ url_for('admin.admin_deal_payments', deal_id=d.id) }}">Record / view</a></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="empty">No deals yet</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+</body>
+</html>

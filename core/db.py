@@ -305,4 +305,37 @@ def migrate_db():
                 db.execute(f'ALTER TABLE users ADD COLUMN {col} {typedef}')
             except Exception:
                 pass
+    
+    # Deal payment tracking (one statement per execute — SQLite requirement)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS deal_brokerage_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            deal_id INTEGER NOT NULL,
+            amount REAL NOT NULL DEFAULT 0,
+            payment_date TEXT,
+            method TEXT,
+            reference TEXT,
+            notes TEXT,
+            created_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (deal_id) REFERENCES deals (id),
+            FOREIGN KEY (created_by) REFERENCES users (id)
+        )
+    """)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS deal_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            deal_id INTEGER NOT NULL,
+            amount REAL NOT NULL DEFAULT 0,
+            payment_date TEXT,
+            method TEXT,
+            reference TEXT,
+            notes TEXT,
+            created_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (deal_id) REFERENCES deals (id),
+            FOREIGN KEY (created_by) REFERENCES users (id)
+        )
+    """)
+
     db.commit()

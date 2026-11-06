@@ -117,10 +117,10 @@ html, body { height: 100%; }
     <div class="g">
       <div class="fg s3"><label>Title <span class="r">*</span></label><input type="text" name="title" required placeholder="e.g. 3BHK Sea View Apartment"></div>
       <div class="fg"><label>Status</label>
-        <select name="status"><option value="available">Available</option><option value="under_offer">Under offer</option><option value="sold">Sold</option><option value="rented">Rented</option></select>
+        <select name="status"><option value="available">Available</option><option value="under_offer">Under offer</option><option value="sold">Sold</option><option value="rented">Rented</option><option value="leased">Leased</option></select>
       </div>
       <div class="fg"><label>Listing type</label>
-        <select name="listing_type"><option value="sale">Sale</option><option value="rent">Rent</option></select>
+        <select name="listing_type"><option value="sale">Sale</option><option value="rent">Rent</option><option value="lease">Lease</option></select>
       </div>
       <div class="fg"><label>Property type</label>
         <select name="property_type"><option value="apartment">Apartment</option><option value="house">House</option><option value="villa">Villa</option><option value="plot">Plot</option><option value="commercial">Commercial</option><option value="office">Office</option><option value="warehouse">Warehouse</option></select>
@@ -193,7 +193,7 @@ html, body { height: 100%; }
     <ul class="rules">
       <li><strong>title</strong> and <strong>price</strong> required</li>
       <li>property_type: apartment · house · villa · plot · commercial · office · warehouse</li>
-      <li>status: available · under_offer · sold · rented · purpose: sale · rent</li>
+      <li>status: available · under_offer · sold · rented · purpose: sale · rent · lease</li>
       <li>agent_email optional — must match an existing agent account</li>
     </ul>
     <form method="POST" action="{{ url_for('admin.admin_import_properties') }}" enctype="multipart/form-data" class="import-row">

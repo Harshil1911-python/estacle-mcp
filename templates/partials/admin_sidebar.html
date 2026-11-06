@@ -60,7 +60,7 @@
             </div>
         </div>
 
-        <div class="nav-dropdown {% if active in ['deals', 'deals_pipeline', 'add_deal'] %}open has-active{% endif %}">
+        <div class="nav-dropdown {% if active in ['deals', 'deals_pipeline', 'add_deal', 'deal_payments', 'brokerage'] %}open has-active{% endif %}">
             <button type="button" class="nav-dropdown-toggle" onclick="this.parentElement.classList.toggle('open')">
                 <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 <span>Deals</span>
@@ -69,6 +69,8 @@
             <div class="nav-dropdown-menu">
                 <a href="{{ url_for('admin.admin_deals') }}" class="nav-subitem {% if active == 'deals' %}active{% endif %}">All Deals</a>
                 <a href="{{ url_for('admin.admin_deals_pipeline') }}" class="nav-subitem {% if active == 'deals_pipeline' %}active{% endif %}">Pipeline</a>
+                <a href="{{ url_for('admin.admin_track_payments') }}" class="nav-subitem {% if active == 'deal_payments' %}active{% endif %}">Track Payment</a>
+                <a href="{{ url_for('admin.admin_brokerage_payments') }}" class="nav-subitem {% if active == 'brokerage' %}active{% endif %}">Brokerage Payments</a>
             </div>
         </div>
 

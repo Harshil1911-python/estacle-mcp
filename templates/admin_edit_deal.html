@@ -63,10 +63,10 @@
       </div>
       <div class="fg">
         <label>Property</label>
-        <select name="property_id">
+        <select name="property_id" id="dealProperty">
           <option value="">— Unlinked —</option>
           {% for p in properties %}
-          <option value="{{ p.id }}" {% if deal.property_id==p.id %}selected{% endif %}>{{ p.title }}</option>
+          <option value="{{ p.id }}" data-price="{{ p.price or 0 }}" {% if deal.property_id==p.id %}selected{% endif %}>{{ p.title }}</option>
           {% endfor %}
         </select>
       </div>
@@ -90,7 +90,7 @@
       </div>
       <div class="fg">
         <label>Deal value</label>
-        <input type="number" name="value" step="any" min="0" value="{{ deal.value or '' }}">
+        <input type="number" name="value" id="dealValue" step="any" min="0" value="{{ deal.value or '' }}">
       </div>
       <div class="fg">
         <label>Commission rate (%)</label>
@@ -114,5 +114,21 @@
 </div>
 </main>
 </div>
+
+<script>
+(function(){
+  var sel = document.getElementById('dealProperty');
+  var val = document.getElementById('dealValue');
+  if (!sel || !val) return;
+  var userEdited = !!val.value;
+  val.addEventListener('input', function(){ userEdited = true; });
+  sel.addEventListener('change', function(){
+    var opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+    var price = parseFloat(opt.getAttribute('data-price') || '0');
+    if (!isNaN(price) && price > 0 && !userEdited) val.value = price;
+  });
+})();
+</script>
 </body>
 </html>

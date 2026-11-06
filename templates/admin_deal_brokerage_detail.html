@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Brokerage</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; display: flex; flex-direction: column; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important; background: transparent !important;
+  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0a0a0a; margin: 0 0 1px; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #525252; margin: 0; }
+.btn-back {
+  display: inline-flex; align-items: center; height: 36px; padding: 0 12px;
+  background: #fff; color: #171717; border: 1px solid #d4d4d4; border-radius: 6px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.page-wrap {
+  padding: 12px 32px 28px; max-width: 880px; width: 100%;
+  margin: 0 auto; box-sizing: border-box;
+}
+.stamp-banner {
+  margin-bottom: 14px; padding: 10px 14px; border-radius: 4px;
+  background: #000; color: #fff; font-weight: 800; font-size: 12px;
+  letter-spacing: 0.08em; text-transform: uppercase; text-align: center;
+}
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+@media (max-width: 700px) { .stat-row { grid-template-columns: 1fr; } }
+.stat-card {
+  background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px 14px;
+}
+.stat-card .l { font-size: 12px; color: #525252; margin-bottom: 4px; }
+.stat-card .v { font-size: 18px; font-weight: 700; color: #0a0a0a; }
+.panel {
+  background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; margin-bottom: 14px; overflow: hidden;
+}
+.panel-hd {
+  padding: 10px 14px; border-bottom: 1px solid #e5e5e5; background: #fafafa;
+  font-size: 13px; font-weight: 600; color: #0a0a0a;
+}
+.panel-bd { padding: 14px; }
+.g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px; }
+.g .s3 { grid-column: 1 / -1; }
+@media (max-width: 700px) { .g { grid-template-columns: 1fr 1fr; } }
+.fg { display: flex; flex-direction: column; gap: 3px; }
+.fg label { font-size: 11.5px; font-weight: 600; color: #404040; }
+.fg input, .fg select, .fg textarea {
+  height: 36px; padding: 0 9px; border: 1px solid #d4d4d4; border-radius: 6px;
+  font-size: 13px; font-family: inherit; width: 100%; box-sizing: border-box;
+}
+.fg textarea { height: 64px; padding: 8px 9px; }
+.btn-save {
+  height: 34px; padding: 0 14px; background: #0a0a0a; border: none; border-radius: 6px;
+  font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; font-family: inherit; margin-top: 10px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+th { background: #fafafa; font-size: 11px; font-weight: 700; color: #525252; text-transform: uppercase; }
+.btn-sm.danger { background: none; border: none; color: #171717; font-weight: 600; font-size: 12px; cursor: pointer; font-family: inherit; text-decoration: underline; }
+.empty { text-align: center; color: #737373; padding: 20px; }
+.meta { font-size: 12.5px; color: #525252; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'brokerage' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+  <header class="top-bar dash-top">
+    <div>
+      <h1 class="page-title">{{ deal.title }}</h1>
+      <p class="page-subtitle">
+        {% if deal.client_name %}{{ deal.client_name }}{% endif %}
+        {% if deal.agent_name %}{% if deal.client_name %}, {% endif %}{{ deal.agent_name }}{% endif %}
+      </p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="{{ url_for('admin.admin_export_deal_brokerage', deal_id=deal.id) }}" class="btn-back">Export history</a>
+      <a href="{{ url_for('admin.admin_brokerage_payments') }}" class="btn-back">Back</a>
+    </div>
+  </header>
+  <div class="page-wrap">
+    {% if completed %}
+    <div class="stamp-banner">Completed</div>
+    {% elif stage == 'closed' %}
+    <div class="stamp-banner">Closed</div>
+    {% endif %}
+
+    <p class="meta">
+      Deal value {{ format_money(deal.value or 0, currency) }}.
+      Customer paid {{ format_money(customer_paid, currency) }}, balance {{ format_money(customer_balance, currency) }}.
+      Commission rate {{ deal.commission_rate or 0 }}%.
+    </p>
+
+    <div class="stat-row">
+      <div class="stat-card"><div class="l">Brokerage due</div><div class="v">{{ format_money(due, currency) }}</div></div>
+      <div class="stat-card"><div class="l">Received</div><div class="v">{{ format_money(received, currency) }}</div></div>
+      <div class="stat-card"><div class="l">Balance ({{ pct }}%)</div><div class="v">{{ format_money(balance, currency) }}</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hd">Record brokerage payment</div>
+      <div class="panel-bd">
+        <form method="POST">
+          <div class="g">
+            <div class="fg">
+              <label>Amount</label>
+              <input type="number" name="amount" step="any" min="0" required placeholder="Amount received">
+            </div>
+            <div class="fg">
+              <label>Date</label>
+              <input type="date" name="payment_date">
+            </div>
+            <div class="fg">
+              <label>Method</label>
+              <select name="method">
+                <option value="">Select</option>
+                <option>Cash</option>
+                <option>UPI</option>
+                <option>Bank transfer</option>
+                <option>Cheque</option>
+                <option>Card</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Reference</label>
+              <input type="text" name="reference" placeholder="Txn ID">
+            </div>
+            <div class="fg s3">
+              <label>Notes</label>
+              <textarea name="notes"></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn-save">Save brokerage</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hd">Brokerage history</div>
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Notes</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+          <tr>
+            <td>{{ p.payment_date or p.created_at or '—' }}</td>
+            <td>{{ format_money(p.amount or 0, currency) }}</td>
+            <td>{{ p.method or '—' }}</td>
+            <td>{{ p.reference or '—' }}</td>
+            <td>{{ p.notes or '—' }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('admin.admin_delete_brokerage_payment', payment_id=p.id) }}" onsubmit="return confirm('Remove this entry?');" style="margin:0">
+                <button type="submit" class="btn-sm danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="empty">No brokerage payments recorded</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+</body>
+</html>

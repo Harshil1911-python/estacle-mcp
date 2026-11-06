@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Deal Payments</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important; background: transparent !important;
+  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
+.btn-back {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  background: #fff; color: #475569; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.page-wrap {
+  padding: 12px 32px 28px; max-width: 920px; width: 100%;
+  margin: 0 auto; box-sizing: border-box;
+}
+.main-content { display: flex; flex-direction: column; }
+
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+.stat-card {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px; padding: 14px 16px;
+}
+.stat-card .l { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+.stat-card .v { font-size: 20px; font-weight: 700; color: #0f172a; }
+.panel {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px; margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04); overflow: hidden;
+}
+.panel-hd { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc; font-size: 13px; font-weight: 600; }
+.panel-bd { padding: 14px 16px; }
+.g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px; }
+.g .s3 { grid-column: 1 / -1; }
+@media (max-width: 700px) { .g { grid-template-columns: 1fr 1fr; } .stat-row { grid-template-columns: 1fr; } }
+.fg { display: flex; flex-direction: column; gap: 3px; }
+.fg label { font-size: 11.5px; font-weight: 600; color: #475569; }
+.fg input, .fg select, .fg textarea {
+  height: 36px; padding: 0 9px; border: 1px solid #e2e8f0; border-radius: 7px;
+  font-size: 13px; font-family: inherit; width: 100%; box-sizing: border-box;
+}
+.fg textarea { height: 64px; padding: 8px 9px; }
+.btn-save {
+  height: 34px; padding: 0 14px; background: #0f172a; border: none; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; font-family: inherit; margin-top: 10px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+th { background: #fafbfc; font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+.btn-sm.danger { background: none; border: none; color: #b91c1c; font-weight: 600; font-size: 12px; cursor: pointer; font-family: inherit; }
+.empty { text-align: center; color: #94a3b8; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'deal_payments' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+  <header class="top-bar dash-top">
+    <div>
+      <h1 class="page-title">{{ deal.title }}</h1>
+      <p class="page-subtitle">
+        {% if deal.client_name %}{{ deal.client_name }} · {% endif %}
+        Deal value {{ format_money(deal.value or 0, currency) }}
+      </p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="{{ url_for('admin.admin_export_deal_payments', deal_id=deal.id) }}" class="btn-back">Export history</a>
+      <a href="{{ url_for('admin.admin_track_payments') }}" class="btn-back">← Track Payment</a>
+    </div>
+  </header>
+  <div class="page-wrap">
+    {% if deal.stage == 'closed' or pct >= 100 %}
+    <div style="margin-bottom:14px;padding:10px 14px;border-radius:4px;background:#000;color:#fff;font-weight:800;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;text-align:center">
+      Closed
+    </div>
+    {% endif %}
+    <div class="stat-row">
+      <div class="stat-card"><div class="l">Deal value</div><div class="v">{{ format_money(deal.value or 0, currency) }}</div></div>
+      <div class="stat-card"><div class="l">Paid</div><div class="v">{{ format_money(paid, currency) }}</div></div>
+      <div class="stat-card"><div class="l">Balance ({{ pct }}%)</div><div class="v">{{ format_money(balance, currency) }}</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hd">Record payment</div>
+      <div class="panel-bd">
+        <form method="POST">
+          <div class="g">
+            <div class="fg">
+              <label>Amount *</label>
+              <input type="number" name="amount" step="any" min="0" required placeholder="Amount received">
+            </div>
+            <div class="fg">
+              <label>Date</label>
+              <input type="date" name="payment_date">
+            </div>
+            <div class="fg">
+              <label>Method</label>
+              <select name="method">
+                <option value="">— Select —</option>
+                <option>Cash</option>
+                <option>UPI</option>
+                <option>Bank transfer</option>
+                <option>Cheque</option>
+                <option>Card</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Reference</label>
+              <input type="text" name="reference" placeholder="Txn ID / cheque no.">
+            </div>
+            <div class="fg s3">
+              <label>Notes</label>
+              <textarea name="notes" placeholder="Optional note"></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn-save">Save payment</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hd">Payment history</div>
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Notes</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+          <tr>
+            <td>{{ p.payment_date or p.created_at or '—' }}</td>
+            <td>{{ format_money(p.amount or 0, currency) }}</td>
+            <td>{{ p.method or '—' }}</td>
+            <td>{{ p.reference or '—' }}</td>
+            <td>{{ p.notes or '—' }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('admin.admin_delete_payment', payment_id=p.id) }}" onsubmit="return confirm('Remove this payment?');" style="margin:0">
+                <button type="submit" class="btn-sm danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="empty">No payments recorded yet</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+</body>
+</html>
