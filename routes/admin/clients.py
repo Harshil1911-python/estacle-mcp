@@ -122,9 +122,12 @@ def admin_clients():
             "OR IFNULL(c.notes,'') LIKE ? OR IFNULL(c.preferred_city,'') LIKE ?)"
         )
         params.extend(['%' + q + '%'] * 5)
-    if status_filter in ('lead', 'contacted', 'qualified', 'negotiation', 'closed', 'lost'):
-        sql += " AND c.status = ?"
-        params.append(status_filter)
+    if status_filter in ('lead', 'contacted', 'nurturing', 'closed', 'lost'):
+        if status_filter == 'nurturing':
+            sql += " AND c.status IN ('nurturing','qualified','negotiation')"
+        else:
+            sql += " AND c.status = ?"
+            params.append(status_filter)
     if agent_id.isdigit():
         sql += " AND c.agent_id = ?"
         params.append(int(agent_id))
@@ -161,8 +164,7 @@ def admin_clients():
         'total': db.execute('SELECT COUNT(*) FROM clients').fetchone()[0],
         'lead': db.execute("SELECT COUNT(*) FROM clients WHERE status = 'lead'").fetchone()[0],
         'contacted': db.execute("SELECT COUNT(*) FROM clients WHERE status = 'contacted'").fetchone()[0],
-        'qualified': db.execute("SELECT COUNT(*) FROM clients WHERE status = 'qualified'").fetchone()[0],
-        'negotiation': db.execute("SELECT COUNT(*) FROM clients WHERE status = 'negotiation'").fetchone()[0],
+        'nurturing': db.execute("SELECT COUNT(*) FROM clients WHERE status IN ('nurturing','qualified','negotiation')").fetchone()[0],
         'closed': db.execute("SELECT COUNT(*) FROM clients WHERE status = 'closed'").fetchone()[0],
         'lost': db.execute("SELECT COUNT(*) FROM clients WHERE status = 'lost'").fetchone()[0],
         'with_login': db.execute('SELECT COUNT(*) FROM clients WHERE user_id IS NOT NULL').fetchone()[0],
@@ -221,7 +223,7 @@ def admin_add_client():
         except ValueError:
             budget = None
         status = request.form.get('status', 'lead')
-        if status not in ('lead', 'contacted', 'qualified', 'negotiation', 'closed', 'lost'):
+        if status not in ('lead', 'contacted', 'nurturing', 'closed', 'lost'):
             status = 'lead'
 
         make_id = request.form.get('make_id') in ('1', 'on', 'true', 'yes')
@@ -318,7 +320,7 @@ def admin_delete_client(client_id):
 @role_required('admin')
 def admin_update_client_status(client_id):
     status = request.form.get('status', '')
-    if status not in ('lead', 'contacted', 'qualified', 'negotiation', 'closed', 'lost'):
+    if status not in ('lead', 'contacted', 'nurturing', 'closed', 'lost'):
         flash('Invalid status.', 'danger')
         return redirect(url_for('admin.admin_clients'))
     db = get_db()
@@ -419,7 +421,7 @@ def admin_edit_client(client_id):
         except ValueError:
             budget = None
         status = request.form.get('status', client['status'] or 'lead')
-        if status not in ('lead', 'contacted', 'qualified', 'negotiation', 'closed', 'lost'):
+        if status not in ('lead', 'contacted', 'nurturing', 'closed', 'lost'):
             status = 'lead'
         db.execute(
             """UPDATE clients SET
@@ -589,7 +591,7 @@ def admin_import_clients():
             skipped += 1
             continue
         status = str(row.get('status') or 'lead').strip().lower()
-        if status not in ('lead', 'contacted', 'qualified', 'negotiation', 'closed', 'lost'):
+        if status not in ('lead', 'contacted', 'nurturing', 'closed', 'lost'):
             status = 'lead'
         budget = None
         try:

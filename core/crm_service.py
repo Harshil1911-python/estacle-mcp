@@ -413,6 +413,168 @@ def mark_followup_complete(user: dict, task_id: int) -> dict:
     return update_followup(user, task_id, status="completed")
 
 
+# ----- Deals -----
+
+_DEAL_STAGES = ("offer", "negotiation", "under_contract", "closed", "lost")
+
+
+def _normalize_deal_stage(st: str) -> str:
+    st = (st or "offer").strip().lower().replace(" ", "_")
+    aliases = {
+        "under contract": "under_contract",
+        "under-contract": "under_contract",
+        "won": "closed",
+        "sold": "closed",
+    }
+    st = aliases.get(st, st)
+    if st not in _DEAL_STAGES:
+        st = "offer"
+    return st
+
+
+def add_deal(
+    user: dict,
+    title: str,
+    value: float = 0,
+    commission_rate: float = 2.5,
+    stage: str = "offer",
+    property_id: int = None,
+    client_id: int = None,
+    agent_id: int = None,
+    expected_close: str = None,
+    notes: str = None,
+) -> dict:
+    require_staff(user)
+    title = (title or "").strip()
+    if not title:
+        raise ValueError("title is required")
+    stage = _normalize_deal_stage(stage)
+    with db_conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO deals
+               (title, property_id, client_id, agent_id, stage, value, commission_rate, expected_close, notes)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (
+                title,
+                int(property_id) if property_id else None,
+                int(client_id) if client_id else None,
+                int(agent_id) if agent_id else None,
+                stage,
+                float(value or 0),
+                float(commission_rate or 2.5),
+                expected_close or None,
+                notes,
+            ),
+        )
+        did = cur.lastrowid
+        row = dict(conn.execute(
+            "SELECT id, title, stage, value, commission_rate, expected_close FROM deals WHERE id = ?",
+            (did,),
+        ).fetchone())
+    return {"ok": True, "deal": row}
+
+
+def search_deals(
+    user: dict,
+    q: str = None,
+    stage: str = None,
+    limit: int = 30,
+) -> dict:
+    require_staff(user)
+    limit = min(int(limit or 30), 100)
+    sql = (
+        "SELECT d.id, d.title, d.stage, d.value, d.commission_rate, d.expected_close, "
+        "d.property_id, d.client_id, d.agent_id, "
+        "p.title as property_title, c.full_name as client_name, u.full_name as agent_name "
+        "FROM deals d "
+        "LEFT JOIN properties p ON d.property_id = p.id "
+        "LEFT JOIN clients c ON d.client_id = c.id "
+        "LEFT JOIN users u ON d.agent_id = u.id WHERE 1=1"
+    )
+    params: list = []
+    if stage:
+        sql += " AND lower(IFNULL(d.stage,'')) = ?"
+        params.append(_normalize_deal_stage(stage))
+    if q:
+        sql += (
+            " AND (d.title LIKE ? OR IFNULL(p.title,'') LIKE ? OR IFNULL(c.full_name,'') LIKE ?)"
+        )
+        params.extend(["%" + q + "%"] * 3)
+    scope_sql, scope_params = agent_scope_clause(user, "d.agent_id")
+    if scope_sql:
+        sql += scope_sql  # already includes leading AND
+        params.extend(scope_params)
+    sql += " ORDER BY d.updated_at DESC LIMIT ?"
+    params.append(limit)
+    with db_conn() as conn:
+        rows = _rows(conn.execute(sql, params))
+    return {"ok": True, "deals": rows, "count": len(rows)}
+
+
+def get_deal_details(user: dict, deal_id: int) -> dict:
+    require_staff(user)
+    with db_conn() as conn:
+        row = conn.execute(
+            """SELECT d.*, p.title as property_title, c.full_name as client_name, u.full_name as agent_name
+               FROM deals d
+               LEFT JOIN properties p ON d.property_id = p.id
+               LEFT JOIN clients c ON d.client_id = c.id
+               LEFT JOIN users u ON d.agent_id = u.id
+               WHERE d.id = ?""",
+            (int(deal_id),),
+        ).fetchone()
+        if not row:
+            raise ValueError("deal not found")
+    return {"ok": True, "deal": dict(row)}
+
+
+def update_deal(user: dict, deal_id: int, **kwargs) -> dict:
+    require_staff(user)
+    allowed = {
+        "title", "value", "commission_rate", "stage", "property_id",
+        "client_id", "agent_id", "expected_close", "notes",
+    }
+    fields = []
+    params: list = []
+    for k, v in kwargs.items():
+        if k not in allowed or v is None:
+            continue
+        if k == "stage":
+            v = _normalize_deal_stage(v)
+        fields.append(f"{k} = ?")
+        params.append(v)
+    if not fields:
+        raise ValueError("No fields to update")
+    fields.append("updated_at = CURRENT_TIMESTAMP")
+    params.append(int(deal_id))
+    with db_conn() as conn:
+        exists = conn.execute("SELECT id FROM deals WHERE id = ?", (int(deal_id),)).fetchone()
+        if not exists:
+            raise ValueError("deal not found")
+        conn.execute(f"UPDATE deals SET {', '.join(fields)} WHERE id = ?", params)
+        row = dict(conn.execute(
+            "SELECT id, title, stage, value, commission_rate, expected_close FROM deals WHERE id = ?",
+            (int(deal_id),),
+        ).fetchone())
+    return {"ok": True, "deal": row}
+
+
+def delete_deal(user: dict, deal_id: int, confirm: bool = False) -> dict:
+    require_staff(user)
+    if not confirm:
+        return {"ok": False, "needs_confirmation": True, "message": "Pass confirm=true to delete"}
+    with db_conn() as conn:
+        row = conn.execute("SELECT id, title FROM deals WHERE id = ?", (int(deal_id),)).fetchone()
+        if not row:
+            raise ValueError("deal not found")
+        conn.execute("DELETE FROM deals WHERE id = ?", (int(deal_id),))
+    return {"ok": True, "deleted_deal_id": int(deal_id), "title": row["title"]}
+
+
+def change_deal_stage(user: dict, deal_id: int, stage: str) -> dict:
+    return update_deal(user, deal_id, stage=_normalize_deal_stage(stage))
+
+
 # ----- Analytics -----
 
 def get_dashboard_analytics(user: dict) -> dict:

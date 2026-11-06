@@ -5,6 +5,8 @@ from flask import (
     current_app, make_response, jsonify
 )
 from datetime import datetime
+import csv
+import io
 
 from core.db import get_db, migrate_db
 from core.helpers import (
@@ -14,12 +16,11 @@ from core.helpers import (
 from routes.admin import admin
 
 # Client pipeline stages (same as Clients module)
-STAGES = ('lead', 'contacted', 'qualified', 'negotiation', 'closed', 'lost')
+STAGES = ('lead', 'contacted', 'nurturing', 'closed', 'lost')
 STAGE_LABELS = {
     'lead': 'Lead',
     'contacted': 'Contacted',
-    'qualified': 'Qualified',
-    'negotiation': 'Negotiation',
+    'nurturing': 'Nurturing',
     'closed': 'Closed',
     'lost': 'Lost',
 }
@@ -31,6 +32,8 @@ def _normalize_status(st):
     aliases = {
         'new': 'lead',
         'won': 'closed',
+        'qualified': 'nurturing',
+        'negotiation': 'nurturing',
     }
     st = aliases.get(st, st)
     if st not in STAGES:
@@ -175,14 +178,31 @@ def admin_add_lead():
         source = request.form.get('source', '').strip() or None
         interest = request.form.get('interest', '').strip() or None
         notes = request.form.get('notes', '').strip() or None
+        preferred_city = request.form.get('preferred_city', '').strip() or None
+        address = request.form.get('address', '').strip() or None
+        listing_type = request.form.get('listing_type', '').strip() or None
+        timeline = request.form.get('timeline', '').strip() or None
+        company = request.form.get('company', '').strip() or None
+        # fold extra detail into notes for storage without schema change beyond clients cols
+        extra_bits = []
+        if company:
+            extra_bits.append('Company: ' + company)
+        if listing_type:
+            extra_bits.append('Looking to: ' + listing_type)
+        if timeline:
+            extra_bits.append('Timeline: ' + timeline)
+        if extra_bits:
+            notes = ((notes + '\n') if notes else '') + ' · '.join(extra_bits)
         agent_id = int(assigned) if assigned and str(assigned).isdigit() else None
 
         # Primary: clients table (Kanban source of truth)
         cur = db.execute(
             """INSERT INTO clients
-               (full_name, email, phone, status, notes, agent_id, source, budget, interest)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (name, email, phone, status, notes, agent_id, source, budget, interest),
+               (full_name, email, phone, status, notes, agent_id, source, budget,
+                interest, preferred_city, address)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (name, email, phone, status, notes, agent_id, source, budget,
+             interest, preferred_city, address),
         )
         client_id = cur.lastrowid
 
@@ -279,4 +299,144 @@ def admin_delete_lead(lead_id):
         pass
     db.commit()
     flash('Removed from pipeline.', 'success')
+    return redirect(url_for('admin.admin_leads'))
+
+
+@admin.route('/admin/leads/export')
+@login_required
+@role_required('admin')
+def admin_export_leads():
+    """Export leads (clients in pipeline) as CSV. Optional ?status= stage filter."""
+    db = get_db()
+    migrate_db()
+    status = request.args.get('status', '').strip().lower()
+    if status in ('qualified', 'negotiation'):
+        status = 'nurturing'
+    sql = (
+        "SELECT c.id, c.full_name, c.email, c.phone, c.status, c.source, c.budget, "
+        "c.interest, c.preferred_city, c.address, c.notes, c.created_at, "
+        "u.full_name as agent_name "
+        "FROM clients c LEFT JOIN users u ON c.agent_id = u.id WHERE 1=1"
+    )
+    params = []
+    if status in STAGES:
+        if status == 'nurturing':
+            sql += " AND c.status IN ('nurturing','qualified','negotiation')"
+        else:
+            sql += " AND c.status = ?"
+            params.append(status)
+    sql += " ORDER BY c.created_at DESC"
+    rows = db.execute(sql, params).fetchall()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        'id', 'full_name', 'email', 'phone', 'status', 'source', 'budget',
+        'interest', 'preferred_city', 'address', 'notes', 'created_at', 'agent_name',
+    ])
+    for r in rows:
+        st = _normalize_status(r['status'])
+        writer.writerow([
+            r['id'], r['full_name'], r['email'], r['phone'], st, r['source'],
+            r['budget'], r['interest'], r['preferred_city'], r['address'],
+            r['notes'], r['created_at'], r['agent_name'],
+        ])
+    filename = 'leads_{}.csv'.format(status) if status in STAGES else 'leads.csv'
+    resp = make_response(output.getvalue())
+    resp.headers['Content-Type'] = 'text/csv'
+    resp.headers['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+    return resp
+
+
+@admin.route('/admin/leads/import', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_import_leads():
+    """Import leads from CSV / Excel into clients pipeline."""
+    db = get_db()
+    migrate_db()
+    f = request.files.get('import_file')
+    if not f or not f.filename:
+        flash('Choose a CSV or Excel file to import.', 'danger')
+        return redirect(url_for('admin.admin_add_lead') + '#import')
+    rows = []
+    try:
+        name = (f.filename or '').lower()
+        if name.endswith(('.xlsx', '.xls')):
+            import openpyxl
+            wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+            ws = wb.active
+            data = list(ws.iter_rows(values_only=True))
+            if not data:
+                flash('Empty spreadsheet.', 'warning')
+                return redirect(url_for('admin.admin_add_lead') + '#import')
+            headers = [str(h or '').strip().lower() for h in data[0]]
+            for row in data[1:]:
+                if not any(row):
+                    continue
+                rows.append({headers[i]: (row[i] if i < len(row) else None) for i in range(len(headers))})
+        else:
+            raw = f.read()
+            try:
+                text = raw.decode('utf-8-sig')
+            except Exception:
+                text = raw.decode('latin-1')
+            reader = csv.DictReader(io.StringIO(text))
+            for row in reader:
+                rows.append({(k or '').strip().lower(): v for k, v in row.items()})
+    except Exception as e:
+        flash('Could not read file: {}'.format(e), 'danger')
+        return redirect(url_for('admin.admin_add_lead') + '#import')
+
+    agents_by_email = {
+        (r['email'] or '').lower(): r['id']
+        for r in db.execute(
+            "SELECT id, email FROM users WHERE role IN ('admin','agent')"
+        ).fetchall()
+    }
+    added = 0
+    skipped = 0
+    for row in rows:
+        full_name = str(row.get('full_name') or '').strip()
+        if not full_name:
+            skipped += 1
+            continue
+        status = _normalize_status(str(row.get('status') or 'lead'))
+        budget = None
+        try:
+            if row.get('budget') not in (None, ''):
+                budget = float(row.get('budget'))
+        except Exception:
+            budget = None
+        agent_email = str(row.get('agent_email') or '').strip().lower()
+        agent_id = agents_by_email.get(agent_email)
+        db.execute(
+            """INSERT INTO clients
+               (full_name, email, phone, status, notes, agent_id, source, budget,
+                interest, preferred_city, address)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                full_name,
+                str(row.get('email') or '').strip() or None,
+                str(row.get('phone') or '').strip() or None,
+                status,
+                str(row.get('notes') or '').strip() or None,
+                agent_id,
+                str(row.get('source') or '').strip() or None,
+                budget,
+                str(row.get('interest') or '').strip() or None,
+                str(row.get('preferred_city') or '').strip() or None,
+                str(row.get('address') or '').strip() or None,
+            ),
+        )
+        added += 1
+    db.commit()
+    if added:
+        log_activity('Imported {} lead(s)'.format(added), 'client', None, None)
+        flash('Imported {} lead(s){}.'.format(
+            added, ' · skipped {}'.format(skipped) if skipped else ''
+        ), 'success')
+    else:
+        flash('No leads imported{}.'.format(
+            ' · skipped {}'.format(skipped) if skipped else ''
+        ), 'warning')
     return redirect(url_for('admin.admin_leads'))

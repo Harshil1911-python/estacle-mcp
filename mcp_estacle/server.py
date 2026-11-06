@@ -66,7 +66,9 @@ _server_kwargs = {
         "You are connected to Estacle, a real-estate CRM by TechSerenia. "
         "Use tools to create, read, and update CRM records in the live database. "
         "Never claim success unless a tool returns ok:true. "
-        "For delete_property and delete_client, you must pass confirm=true only after the user explicitly confirms."
+        "Never show SQL, queries, or raw tool payloads to the user — speak in business language only. "
+        "Deals stages: offer, negotiation, under_contract, closed, lost. "
+        "For delete_property, delete_client, and delete_deal, pass confirm=true only after the user explicitly confirms."
     ),
 }
 if _ts is not None:
@@ -336,6 +338,104 @@ def mark_followup_complete(task_id: int) -> str:
     """Mark a follow-up task as completed."""
     try:
         return _ok(crm.mark_followup_complete(get_user(), task_id))
+    except Exception as e:
+        return _err(e)
+
+
+@mcp.tool()
+def add_deal(
+    title: str,
+    value: Optional[float] = 0,
+    commission_rate: Optional[float] = 2.5,
+    stage: Optional[str] = "offer",
+    property_id: Optional[int] = None,
+    client_id: Optional[int] = None,
+    agent_id: Optional[int] = None,
+    expected_close: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> str:
+    """Create a deal in the Estacle pipeline."""
+    try:
+        return _ok(crm.add_deal(
+            get_user(),
+            title=title,
+            value=value or 0,
+            commission_rate=commission_rate or 2.5,
+            stage=stage or "offer",
+            property_id=property_id,
+            client_id=client_id,
+            agent_id=agent_id,
+            expected_close=expected_close,
+            notes=notes,
+        ))
+    except Exception as e:
+        return _err(e)
+
+
+@mcp.tool()
+def search_deals(
+    q: Optional[str] = None,
+    stage: Optional[str] = None,
+    limit: Optional[int] = 30,
+) -> str:
+    """Search/list deals. stage: offer|negotiation|under_contract|closed|lost."""
+    try:
+        return _ok(crm.search_deals(get_user(), q=q, stage=stage, limit=limit or 30))
+    except Exception as e:
+        return _err(e)
+
+
+@mcp.tool()
+def get_deal_details(deal_id: int) -> str:
+    """Get one deal by id with property, client, and agent names."""
+    try:
+        return _ok(crm.get_deal_details(get_user(), deal_id))
+    except Exception as e:
+        return _err(e)
+
+
+@mcp.tool()
+def update_deal(
+    deal_id: int,
+    title: Optional[str] = None,
+    value: Optional[float] = None,
+    commission_rate: Optional[float] = None,
+    stage: Optional[str] = None,
+    property_id: Optional[int] = None,
+    client_id: Optional[int] = None,
+    agent_id: Optional[int] = None,
+    expected_close: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> str:
+    """Update fields on a deal."""
+    try:
+        kwargs = {}
+        for k, v in {
+            "title": title, "value": value, "commission_rate": commission_rate,
+            "stage": stage, "property_id": property_id, "client_id": client_id,
+            "agent_id": agent_id, "expected_close": expected_close, "notes": notes,
+        }.items():
+            if v is not None:
+                kwargs[k] = v
+        return _ok(crm.update_deal(get_user(), deal_id, **kwargs))
+    except Exception as e:
+        return _err(e)
+
+
+@mcp.tool()
+def change_deal_stage(deal_id: int, stage: str) -> str:
+    """Move a deal to a pipeline stage: offer, negotiation, under_contract, closed, lost."""
+    try:
+        return _ok(crm.change_deal_stage(get_user(), deal_id, stage))
+    except Exception as e:
+        return _err(e)
+
+
+@mcp.tool()
+def delete_deal(deal_id: int, confirm: bool = False) -> str:
+    """Permanently delete a deal. Requires confirm=true after user approval."""
+    try:
+        return _ok(crm.delete_deal(get_user(), deal_id, confirm=confirm))
     except Exception as e:
         return _err(e)
 

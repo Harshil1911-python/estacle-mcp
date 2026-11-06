@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
@@ -281,13 +282,122 @@ TOOL_SCHEMAS: List[dict] = [
         "type": "function",
         "function": {
             "name": "get_deals",
-            "description": "List deals in the pipeline.",
+            "description": "List deals in the pipeline. Stages: offer, negotiation, under_contract, closed, lost.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "status": {"type": "string"},
+                    "stage": {"type": "string", "description": "offer|negotiation|under_contract|closed|lost"},
+                    "q": {"type": "string", "description": "Search title, property, client"},
                     "limit": {"type": "integer"},
                 },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_deal",
+            "description": "Create a deal in the pipeline.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "value": {"type": "number"},
+                    "commission_rate": {"type": "number"},
+                    "stage": {"type": "string"},
+                    "property_id": {"type": "integer"},
+                    "client_id": {"type": "integer"},
+                    "agent_id": {"type": "integer"},
+                    "expected_close": {"type": "string"},
+                    "notes": {"type": "string"},
+                },
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_deal",
+            "description": "Update a deal by id (title, value, stage, etc.).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "deal_id": {"type": "integer"},
+                    "title": {"type": "string"},
+                    "value": {"type": "number"},
+                    "commission_rate": {"type": "number"},
+                    "stage": {"type": "string"},
+                    "property_id": {"type": "integer"},
+                    "client_id": {"type": "integer"},
+                    "agent_id": {"type": "integer"},
+                    "expected_close": {"type": "string"},
+                    "notes": {"type": "string"},
+                },
+                "required": ["deal_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_deal",
+            "description": "Delete one deal by id. Requires confirmation.",
+            "parameters": {
+                "type": "object",
+                "properties": {"deal_id": {"type": "integer"}},
+                "required": ["deal_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "attach_image",
+            "description": "Attach an uploaded image filename to a property (photos), user (avatar), or client. Use the filename from the user upload.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entity": {"type": "string", "description": "property | user | client"},
+                    "entity_id": {"type": "integer"},
+                    "filename": {"type": "string"},
+                },
+                "required": ["entity", "entity_id", "filename"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "seed_demo_deals",
+            "description": "Create multiple realistic demo deals in one step. Use this when the user asks for N demo/sample/test deals instead of calling create_deal repeatedly.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "description": "How many demo deals to create (1-25). Default 10.",
+                    }
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "bulk_delete",
+            "description": "Delete multiple records of one type in a single confirmed action. entity: property|client|deal|task|user. Pass ids as a list of integers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entity": {"type": "string", "description": "property|client|deal|task|user"},
+                    "ids": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "List of IDs to delete",
+                    },
+                },
+                "required": ["entity", "ids"],
             },
         },
     },
@@ -340,6 +450,8 @@ CONFIRM_TOOLS = {
     "delete_user",
     "delete_client",
     "delete_task",
+    "delete_deal",
+    "bulk_delete",
 }
 
 
@@ -696,20 +808,332 @@ def exec_delete_task(args: dict, user_id: int) -> dict:
     return {"ok": True, "deleted_task_id": tid}
 
 
+def _normalize_deal_stage(st: str) -> str:
+    st = (st or "offer").strip().lower().replace(" ", "_")
+    aliases = {
+        "under contract": "under_contract",
+        "under-contract": "under_contract",
+        "won": "closed",
+        "sold": "closed",
+        "status": "offer",
+    }
+    st = aliases.get(st, st)
+    if st not in ("offer", "negotiation", "under_contract", "closed", "lost"):
+        st = "offer"
+    return st
+
+
 def exec_get_deals(args: dict, user_id: int) -> dict:
     db = get_db()
+    migrate_db()
     limit = min(int(args.get("limit") or 30), 50)
-    sql = "SELECT id, title, value, status, client_id, property_id FROM deals WHERE 1=1"
+    sql = (
+        "SELECT d.id, d.title, d.value, d.stage, d.commission_rate, d.expected_close, "
+        "d.client_id, d.property_id, d.agent_id, "
+        "p.title as property_title, c.full_name as client_name, u.full_name as agent_name "
+        "FROM deals d "
+        "LEFT JOIN properties p ON d.property_id = p.id "
+        "LEFT JOIN clients c ON d.client_id = c.id "
+        "LEFT JOIN users u ON d.agent_id = u.id WHERE 1=1"
+    )
     params: list = []
-    if args.get("status"):
-        sql += " AND lower(status) = ?"
-        params.append(args["status"].lower())
-    sql += " ORDER BY id DESC LIMIT ?"
+    stage = args.get("stage") or args.get("status")
+    if stage:
+        sql += " AND lower(IFNULL(d.stage,'')) = ?"
+        params.append(_normalize_deal_stage(stage))
+    q = (args.get("q") or "").strip()
+    if q:
+        sql += (
+            " AND (d.title LIKE ? OR IFNULL(p.title,'') LIKE ? OR IFNULL(c.full_name,'') LIKE ?)"
+        )
+        params.extend(["%" + q + "%"] * 3)
+    sql += " ORDER BY d.updated_at DESC LIMIT ?"
     params.append(limit)
     try:
         return {"ok": True, "deals": _rows(db.execute(sql, params))}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "Could not load deals"}
+
+
+def exec_attach_image(args: dict, user_id: int) -> dict:
+    db = get_db()
+    migrate_db()
+    entity = (args.get("entity") or "").strip().lower()
+    try:
+        eid = int(args["entity_id"])
+    except Exception:
+        return {"ok": False, "error": "entity_id required"}
+    filename = os.path.basename((args.get("filename") or "").strip())
+    if not filename or ".." in filename:
+        return {"ok": False, "error": "invalid filename"}
+    if entity in ("property", "properties"):
+        row = db.execute("SELECT id, photos FROM properties WHERE id = ?", (eid,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "property not found"}
+        photos = [p.strip() for p in (row["photos"] or "").split(",") if p.strip()]
+        if filename not in photos:
+            photos.append(filename)
+        db.execute(
+            "UPDATE properties SET photos = ? WHERE id = ?",
+            (",".join(photos), eid),
+        )
+        db.commit()
+        _audit(user_id, "AI attach_image", "property", eid, filename)
+        return {"ok": True, "entity": "property", "entity_id": eid, "filename": filename, "photos": photos}
+    if entity in ("user", "users"):
+        row = db.execute("SELECT id FROM users WHERE id = ?", (eid,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "user not found"}
+        try:
+            db.execute("UPDATE users SET avatar = ? WHERE id = ?", (filename, eid))
+        except Exception:
+            return {"ok": False, "error": "could not set user avatar"}
+        db.commit()
+        _audit(user_id, "AI attach_image", "user", eid, filename)
+        return {"ok": True, "entity": "user", "entity_id": eid, "filename": filename}
+    if entity in ("client", "clients"):
+        row = db.execute("SELECT id, notes FROM clients WHERE id = ?", (eid,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "client not found"}
+        note = (row["notes"] or "")
+        line = "[Image: {}]".format(filename)
+        if line not in note:
+            note = (note + "\n" if note else "") + line
+        db.execute("UPDATE clients SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (note, eid))
+        db.commit()
+        _audit(user_id, "AI attach_image", "client", eid, filename)
+        return {"ok": True, "entity": "client", "entity_id": eid, "filename": filename}
+    return {"ok": False, "error": "entity must be property, user, or client"}
+
+
+def exec_seed_demo_deals(args: dict, user_id: int) -> dict:
+    """Create N sample deals across pipeline stages for demos."""
+    db = get_db()
+    migrate_db()
+    try:
+        count = int(args.get("count") or 10)
+    except Exception:
+        count = 10
+    count = max(1, min(count, 25))
+
+    props = _rows(db.execute("SELECT id, title FROM properties ORDER BY id DESC LIMIT 20"))
+    clients = _rows(db.execute("SELECT id, full_name FROM clients ORDER BY id DESC LIMIT 20"))
+    agents = _rows(db.execute(
+        "SELECT id, full_name FROM users WHERE role IN ('admin','agent') AND is_active=1 ORDER BY id LIMIT 10"
+    ))
+
+    samples = [
+        ("Skyline Residences – Patel offer", "offer", 8500000, 2.5),
+        ("Lakeview Villa – negotiation", "negotiation", 12500000, 2.0),
+        ("Tech Park office lease", "under_contract", 180000, 5.0),
+        ("Green Heights 3BHK resale", "offer", 6200000, 2.5),
+        ("Marina Bay apartment – closed", "closed", 9800000, 2.0),
+        ("Palm Grove plot – lost", "lost", 4500000, 2.5),
+        ("City Center shop – under contract", "under_contract", 15000000, 3.0),
+        ("Hillcrest bungalow offer", "offer", 22000000, 2.0),
+        ("Riverside flat – negotiation", "negotiation", 5400000, 2.5),
+        ("Sunrise Towers penthouse", "offer", 31000000, 1.5),
+        ("Industrial warehouse lease", "negotiation", 90000, 4.0),
+        ("Heritage villa – closed", "closed", 17500000, 2.0),
+        ("Downtown studio – lost", "lost", 2800000, 2.5),
+        ("Gardenia society 2BHK", "offer", 4100000, 2.5),
+        ("Coastal retreat – under contract", "under_contract", 14000000, 2.0),
+    ]
+
+    created = []
+    for i in range(count):
+        title, stage, value, rate = samples[i % len(samples)]
+        if i >= len(samples):
+            title = f"{title} #{i + 1}"
+        prop_id = props[i % len(props)]["id"] if props else None
+        client_id = clients[i % len(clients)]["id"] if clients else None
+        agent_id = agents[i % len(agents)]["id"] if agents else None
+        cur = db.execute(
+            """INSERT INTO deals
+               (title, property_id, client_id, agent_id, stage, value, commission_rate, expected_close, notes)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (
+                title,
+                prop_id,
+                client_id,
+                agent_id,
+                stage,
+                value,
+                rate,
+                None,
+                "Demo deal seeded by Estacle AI",
+            ),
+        )
+        created.append({
+            "id": cur.lastrowid,
+            "title": title,
+            "stage": stage,
+            "value": value,
+        })
+    db.commit()
+    _audit(user_id, "AI seed_demo_deals", "deal", None, f"{len(created)} deals")
+    return {"ok": True, "created_count": len(created), "deals": created}
+
+
+def exec_create_deal(args: dict, user_id: int) -> dict:
+    db = get_db()
+    migrate_db()
+    title = (args.get("title") or "").strip()
+    if not title:
+        return {"ok": False, "error": "title is required"}
+    try:
+        value = float(args.get("value") or 0)
+    except Exception:
+        value = 0.0
+    try:
+        rate = float(args.get("commission_rate") or 2.5)
+    except Exception:
+        rate = 2.5
+    stage = _normalize_deal_stage(args.get("stage") or "offer")
+    prop_id = args.get("property_id")
+    client_id = args.get("client_id")
+    agent_id = args.get("agent_id")
+    try:
+        prop_id = int(prop_id) if prop_id else None
+        client_id = int(client_id) if client_id else None
+        agent_id = int(agent_id) if agent_id else None
+    except Exception:
+        return {"ok": False, "error": "invalid property_id, client_id, or agent_id"}
+    cur = db.execute(
+        """INSERT INTO deals
+           (title, property_id, client_id, agent_id, stage, value, commission_rate, expected_close, notes)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        (
+            title,
+            prop_id,
+            client_id,
+            agent_id,
+            stage,
+            value,
+            rate,
+            args.get("expected_close") or None,
+            (args.get("notes") or "").strip() or None,
+        ),
+    )
+    db.commit()
+    did = cur.lastrowid
+    _audit(user_id, "AI create_deal", "deal", did, title)
+    return {"ok": True, "deal_id": did, "title": title, "stage": stage, "value": value}
+
+
+def exec_update_deal(args: dict, user_id: int) -> dict:
+    db = get_db()
+    migrate_db()
+    did = int(args["deal_id"])
+    row = db.execute("SELECT id, title FROM deals WHERE id = ?", (did,)).fetchone()
+    if not row:
+        return {"ok": False, "error": "deal not found"}
+    fields = []
+    params: list = []
+    mapping = {
+        "title": "title",
+        "value": "value",
+        "commission_rate": "commission_rate",
+        "property_id": "property_id",
+        "client_id": "client_id",
+        "agent_id": "agent_id",
+        "expected_close": "expected_close",
+        "notes": "notes",
+    }
+    for k, col in mapping.items():
+        if k in args and args[k] is not None:
+            fields.append(f"{col} = ?")
+            params.append(args[k])
+    if args.get("stage"):
+        fields.append("stage = ?")
+        params.append(_normalize_deal_stage(args["stage"]))
+    if not fields:
+        return {"ok": False, "error": "no fields to update"}
+    fields.append("updated_at = CURRENT_TIMESTAMP")
+    params.append(did)
+    db.execute("UPDATE deals SET " + ", ".join(fields) + " WHERE id = ?", params)
+    db.commit()
+    _audit(user_id, "AI update_deal", "deal", did, row["title"])
+    return {"ok": True, "deal_id": did, "updated": True}
+
+
+def exec_delete_deal(args: dict, user_id: int) -> dict:
+    db = get_db()
+    migrate_db()
+    did = int(args["deal_id"])
+    row = db.execute("SELECT id, title FROM deals WHERE id = ?", (did,)).fetchone()
+    if not row:
+        return {"ok": False, "error": "deal not found"}
+    db.execute("DELETE FROM deals WHERE id = ?", (did,))
+    db.commit()
+    _audit(user_id, "AI delete_deal", "deal", did, row["title"])
+    return {"ok": True, "deleted_deal_id": did, "title": row["title"]}
+
+
+def exec_bulk_delete(args: dict, user_id: int) -> dict:
+    """Delete many records of one entity type in one confirmed call."""
+    db = get_db()
+    migrate_db()
+    entity = (args.get("entity") or "").strip().lower()
+    ids = args.get("ids") or []
+    if not isinstance(ids, list):
+        return {"ok": False, "error": "ids must be a list of integers"}
+    try:
+        ids = [int(x) for x in ids if x is not None and str(x).strip() != ""]
+    except Exception:
+        return {"ok": False, "error": "ids must be integers"}
+    ids = list(dict.fromkeys(ids))  # dedupe, preserve order
+    if not ids:
+        return {"ok": False, "error": "no ids provided"}
+    if len(ids) > 100:
+        return {"ok": False, "error": "max 100 ids per bulk delete"}
+
+    table_map = {
+        "property": ("properties", "title"),
+        "properties": ("properties", "title"),
+        "client": ("clients", "full_name"),
+        "clients": ("clients", "full_name"),
+        "deal": ("deals", "title"),
+        "deals": ("deals", "title"),
+        "task": ("tasks", "title"),
+        "tasks": ("tasks", "title"),
+        "user": ("users", "email"),
+        "users": ("users", "email"),
+    }
+    if entity not in table_map:
+        return {"ok": False, "error": "entity must be property, client, deal, task, or user"}
+    table, label_col = table_map[entity]
+    if table == "users" and user_id in ids:
+        return {"ok": False, "error": "cannot delete your own account in a bulk delete"}
+
+    placeholders = ",".join("?" * len(ids))
+    existing = _rows(
+        db.execute(
+            f"SELECT id, {label_col} AS label FROM {table} WHERE id IN ({placeholders})",
+            ids,
+        )
+    )
+    found_ids = {int(r["id"]) for r in existing}
+    missing = [i for i in ids if i not in found_ids]
+    deleted = []
+    for r in existing:
+        db.execute(f"DELETE FROM {table} WHERE id = ?", (int(r["id"]),))
+        deleted.append({"id": int(r["id"]), "label": r["label"]})
+    db.commit()
+    _audit(
+        user_id,
+        "AI bulk_delete",
+        entity,
+        None,
+        f"{len(deleted)} deleted: " + ", ".join(str(d["id"]) for d in deleted[:20]),
+    )
+    return {
+        "ok": True,
+        "entity": entity,
+        "deleted_count": len(deleted),
+        "deleted": deleted,
+        "missing_ids": missing,
+    }
 
 
 def exec_get_appointments(args: dict, user_id: int) -> dict:
@@ -811,6 +1235,12 @@ EXECUTORS: Dict[str, Callable[[dict, int], dict]] = {
     "update_task": exec_update_task,
     "delete_task": exec_delete_task,
     "get_deals": exec_get_deals,
+    "create_deal": exec_create_deal,
+    "attach_image": exec_attach_image,
+    "seed_demo_deals": exec_seed_demo_deals,
+    "update_deal": exec_update_deal,
+    "delete_deal": exec_delete_deal,
+    "bulk_delete": exec_bulk_delete,
     "get_appointments": exec_get_appointments,
     "get_inquiries": exec_get_inquiries,
     "get_analytics": exec_get_analytics,
@@ -841,23 +1271,50 @@ OWNER & BRAND
 
 HELPDESK
 - You also act as an in-app helpdesk for Estacle.
-- If the user asks how to do something manually in the UI (e.g. how to add a property, where clients are, how to change a status), explain the steps clearly using the Estacle admin navigation (Overview, Users, Properties, Clients, Leads, Tasks, etc.).
+- If the user asks how to do something in the UI, explain steps using Estacle admin navigation (Overview, Users, Properties, Clients, Leads, Deals, Tasks, etc.).
 - You may both guide the user and offer to perform the action via tools when appropriate.
+
+DEALS
+- Deals pipeline stages: offer → negotiation → under_contract → closed → lost.
+- Use get_deals / create_deal / update_deal / delete_deal for normal deal work.
+- If the user asks for several demo/sample/test deals (e.g. “add 10 demo deals”), call seed_demo_deals once with count — never call create_deal in a loop or narrate multiple tool calls in plain text.
+- Prefer stage (not status) when filtering or updating deals.
+- When listing deals, show title, stage, value, client, property in plain language.
+
+IMAGES
+- Users may upload images in chat. Filenames appear in the user message.
+- Use attach_image with entity (property|user|client), entity_id, and filename to save them.
+- Confirm what was attached in plain language; never show server paths.
+
+TOOL CALLING
+- Emit only valid structured tool calls. Never write plans like “I will call create_deal 10 times” as the model output.
+- For batch create of demos, one seed_demo_deals call is enough.
+
+MULTI DELETE
+- When the user asks to delete several items (e.g. “delete properties 3, 5 and 9” or “remove these clients”), use bulk_delete once with entity + ids — do not call delete_* many times unless only one id.
+- Still rely on confirmation; never claim deletes finished until tools return ok:true after confirm.
+- Summarize what will be deleted in business language (names/titles), not raw JSON.
 
 OPERATIONS
 - You execute real database operations only through the provided tools.
 - Never invent IDs, counts, prices, or claim success unless a tool result confirms it.
 - Prefer tools for every CRM read or write.
-- For delete_* tools, still emit the tool call; the app will require user confirmation.
+- For delete_* and bulk_delete tools, emit the tool call; the app will require user confirmation.
 - If a tool returns ok:false, explain the error clearly and suggest the next step.
 
+PRIVACY OF INTERNALS (critical)
+- Never show SQL, database queries, table schemas, tool names, function arguments, JSON payloads, stack traces, or API request details to the user.
+- Never quote SELECT/INSERT/UPDATE/DELETE or “running query…”.
+- Translate every tool result into short business language only.
+- Confirmation prompts should describe the business action (e.g. “Delete 3 clients: A, B, C?”) without exposing internal tool payload format.
+
 REPLY FORMAT (important)
-- Lead with a one-line outcome (e.g. “Created property #42.” / “Here is a snapshot of inventory.”).
+- Lead with a one-line outcome (e.g. “Created deal #12.” / “Here is the deals pipeline.”).
 - Use clean markdown: short headings (##), bullet lists, and compact tables for multi-row data.
-- Table headers must be plain text; keep columns few (id, name/title, status, key metric).
-- Format INR amounts with ₹ and Indian-style grouping when possible (e.g. ₹85,00,000 or ₹85 lakh if the user used lakh).
+- Table headers must be plain text; keep columns few (id, name/title, stage/status, key metric).
+- Format money with the workspace currency when known (e.g. ₹ for INR).
 - End with a brief optional “Next step” only when helpful.
-- Do not dump raw JSON to the user; translate tool results into business language.
+- Do not dump raw JSON to the user.
 - Never ask for or expose API keys.
 - Only use the provided tools — never invent SQL or shell commands.
 """

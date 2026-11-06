@@ -8,6 +8,9 @@ from datetime import datetime, timedelta
 from flask import (
     render_template, request, jsonify, session, current_app
 )
+from werkzeug.utils import secure_filename
+import os
+import time
 from openai import OpenAI
 
 from core.db import get_db, migrate_db
@@ -205,6 +208,32 @@ def admin_ai_test():
         return jsonify({"ok": False, "error": msg}), 400
 
 
+
+
+@admin.route("/admin/ai/upload", methods=["POST"])
+@login_required
+@role_required("admin")
+def admin_ai_upload():
+    """Upload an image for Estacle AI to attach to property / user / client."""
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify({"ok": False, "error": "No file"}), 400
+    fname = secure_filename(f.filename)
+    ext = os.path.splitext(fname)[1].lower()
+    if ext not in (".jpg", ".jpeg", ".png", ".gif", ".webp", ".webp"):
+        if ext not in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
+            return jsonify({"ok": False, "error": "Images only (jpg, png, gif, webp)"}), 400
+    unique = "{}_{}".format(int(time.time() * 1000), fname)
+    # save under properties uploads (shared gallery) and avatars if needed later
+    dest_dir = current_app.config.get("UPLOAD_FOLDER") or os.path.join(
+        current_app.root_path, "static", "uploads", "properties"
+    )
+    os.makedirs(dest_dir, exist_ok=True)
+    path = os.path.join(dest_dir, unique)
+    f.save(path)
+    url = "/static/uploads/properties/" + unique
+    return jsonify({"ok": True, "filename": unique, "url": url, "original": fname})
+
 @admin.route("/admin/ai/chat", methods=["POST"])
 @login_required
 @role_required("admin")
@@ -218,8 +247,11 @@ def admin_ai_chat():
     chat_id = data.get("chat_id")
     history = data.get("history") or []  # optional client-side short history
 
-    if not message:
+    attachments_early = data.get("attachments") or []
+    if not message and not attachments_early:
         return jsonify({"ok": False, "error": "Empty message"}), 400
+    if not message and attachments_early:
+        message = "Please use the uploaded image(s)."
 
     client, err = _client_for(uid)
     if err:
@@ -245,13 +277,31 @@ def admin_ai_chat():
     db.commit()
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    # short history from client (already alternated)
-    for h in history[-12:]:
+    # Keep only the last 3 messages for context (user asked to store last 3)
+    short_history = []
+    for h in history:
         role = h.get("role")
         content = h.get("content")
         if role in ("user", "assistant") and content:
-            messages.append({"role": role, "content": content})
-    messages.append({"role": "user", "content": message})
+            short_history.append({"role": role, "content": content})
+    # Prior turns only; current user message added below → max 3 total
+    for h in short_history[-2:]:
+        messages.append(h)
+    # Attachments from client (uploaded filenames) — hint for tools
+    attachments = data.get("attachments") or []
+    user_content = message
+    if attachments:
+        names = ", ".join(
+            str(a.get("filename") or a) for a in attachments if a
+        )
+        if names:
+            user_content = (
+                message
+                + "\n\n[User uploaded file(s): "
+                + names
+                + ". Use attach_image to link them to a property, user, or client when asked.]"
+            )
+    messages.append({"role": "user", "content": user_content})
 
     pending = None
     final_text = ""
@@ -302,7 +352,18 @@ def admin_ai_chat():
 
                     if name in CONFIRM_TOOLS:
                         pid = str(uuid.uuid4())
-                        summary = f"{name} {json.dumps(args)}"
+                        # Human-readable summary — never expose SQL or raw dumps to the UI
+                        if name == "bulk_delete":
+                            summary = "Delete {} {} record(s): {}".format(
+                                len(args.get("ids") or []),
+                                (args.get("entity") or "item"),
+                                ", ".join(str(i) for i in (args.get("ids") or [])[:12]),
+                            )
+                        elif name.startswith("delete_"):
+                            key = next((k for k in args if k.endswith("_id") or k == "id"), None)
+                            summary = "Delete {} {}".format(name.replace("delete_", ""), args.get(key, ""))
+                        else:
+                            summary = "Confirm action"
                         expires = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
                         db.execute(
                             """INSERT INTO ai_pending (id, user_id, tool_name, arguments, summary, expires_at)
@@ -316,7 +377,7 @@ def admin_ai_chat():
                             "pending_id": pid,
                             "tool": name,
                             "arguments": args,
-                            "message": f"Confirmation required before executing {name}.",
+                            "message": "Confirmation required before this change is applied.",
                         }
                         pending = {
                             "pending_id": pid,
@@ -366,7 +427,23 @@ def admin_ai_chat():
             err_s = "Rate limit exceeded. Please wait and try again."
         elif "401" in err_s:
             err_s = "API key invalid. Update it in Settings."
+        elif "output_parse_failed" in err_s or "Parsing failed" in err_s:
+            err_s = (
+                "The model could not format that request. "
+                "Try a simpler phrasing, e.g. “Add 10 demo deals” or “Create one deal titled …”."
+            )
         return jsonify({"ok": False, "error": err_s, "chat_id": chat_id}), 400
+
+    # Strip accidental SQL / tool dumps from model text
+    import re
+    if final_text:
+        final_text = re.sub(
+            r"(?is)\b(select|insert|update|delete|drop|alter)\b[\s\S]{0,200}?(;|$)",
+            "",
+            final_text,
+        )
+        final_text = re.sub(r"(?im)^\s*(query|sql|tool call|function call)\s*[:=].*$", "", final_text)
+        final_text = re.sub(r"\n{3,}", "\n\n", final_text).strip()
 
     db.execute(
         "INSERT INTO ai_messages (chat_id, role, content, tool_payload) VALUES (?, 'assistant', ?, ?)",
