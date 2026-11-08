@@ -68,17 +68,18 @@ _server_kwargs = {
         "Never claim success unless a tool returns ok:true. "
         "Never show SQL, queries, or raw tool payloads to the user — speak in business language only. "
         "Deals stages: offer, negotiation, under_contract, closed, lost. "
-        "For delete_property, delete_client, and delete_deal, pass confirm=true only after the user explicitly confirms."
+        "For delete_property, delete_client, and delete_deal, pass confirm=true only after the user explicitly confirms. "
+        "Admin may pass also_property=true on delete_deal to remove the linked property across the CRM; analytics then count only remaining live rows."
     ),
 }
 if _ts is not None:
     _server_kwargs["transport_security"] = _ts
 
 try:
-    mcp = _Server("Estacle CRM", **_server_kwargs)
+    mcp = _Server("Serenia AI · Estacle CRM", **_server_kwargs)
 except TypeError:
     mcp = _Server(
-        "Estacle CRM",
+        "Serenia AI · Estacle CRM",
         instructions=_server_kwargs["instructions"],
     )
 
@@ -432,10 +433,24 @@ def change_deal_stage(deal_id: int, stage: str) -> str:
 
 
 @mcp.tool()
-def delete_deal(deal_id: int, confirm: bool = False) -> str:
-    """Permanently delete a deal. Requires confirm=true after user approval."""
+def delete_deal(
+    deal_id: int,
+    confirm: bool = False,
+    also_property: bool = False,
+) -> str:
+    """Permanently delete a deal. Requires confirm=true after user approval.
+    Admin may set also_property=true to also remove the linked property across the CRM
+    (payments, favorites, inquiries cleaned). Live analytics then only count remaining rows.
+    Agents can only delete their own deals and never cascade the property."""
     try:
-        return _ok(crm.delete_deal(get_user(), deal_id, confirm=confirm))
+        return _ok(
+            crm.delete_deal(
+                get_user(),
+                deal_id,
+                confirm=confirm,
+                also_property=also_property,
+            )
+        )
     except Exception as e:
         return _err(e)
 

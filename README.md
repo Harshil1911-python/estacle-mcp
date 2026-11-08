@@ -78,12 +78,12 @@ npm run deploy
 
 Full steps: [CLOUDFLARE.md](CLOUDFLARE.md)
 
-## Estacle AI
+## Serenia AI
 
-Admin → **Overview → Estacle AI**
+Admin → **Overview → Serenia AI**
 
 1. Install deps: `pip install -r requirements.txt` (includes `openai`, `cryptography`)
-2. Open Estacle AI, paste your **Groq API key**, Save, Test connection
+2. Open Serenia AI, paste your **Groq API key**, Save, Test connection
 3. Model: `openai/gpt-oss-20b` via `https://api.groq.com/openai/v1`
 4. Ask natural-language CRM commands — tools execute real DB ops (deletes need Confirm)
 

@@ -34,6 +34,15 @@ def create_app():
     from core.helpers import highlight_match
     app.jinja_env.filters['highlight'] = highlight_match
 
+    @app.context_processor
+    def inject_theme():
+        try:
+            from core.helpers import get_setting
+            mode = get_setting('theme_mode', 'default') or 'default'
+        except Exception:
+            mode = 'default'
+        return {'theme_mode': mode}
+
     @app.before_request
     def touch_last_seen():
         from flask import session

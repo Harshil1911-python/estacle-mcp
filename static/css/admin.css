@@ -834,3 +834,154 @@ html.nav-loading::before {
         font-size: 16px !important; /* prevents iOS zoom */
     }
 }
+
+
+
+/* ========== Appearance themes ========== */
+html.theme-dawn body,
+body.theme-dawn { background: #F2F2F2 !important; color: #1a1a1a !important; }
+html.theme-dawn .sidebar,
+body.theme-dawn .sidebar { background: #E8E8E8 !important; border-right-color: #d4d4d4 !important; box-shadow: none !important; }
+html.theme-dawn .main-content,
+body.theme-dawn .main-content { background: #F2F2F2 !important; }
+html.theme-dawn .panel,
+html.theme-dawn .panel-card,
+html.theme-dawn .stat-card,
+html.theme-dawn .form-panel,
+html.theme-dawn .composer-card,
+html.theme-dawn .ai-settings-card,
+html.theme-dawn .settings-panel,
+html.theme-dawn .chats-panel,
+html.theme-dawn .table-wrap,
+html.theme-dawn .props-table th,
+body.theme-dawn .panel,
+body.theme-dawn .panel-card,
+body.theme-dawn .stat-card,
+body.theme-dawn .form-panel,
+body.theme-dawn .composer-card,
+body.theme-dawn .ai-settings-card,
+body.theme-dawn .settings-panel,
+body.theme-dawn .chats-panel,
+body.theme-dawn .table-wrap { background: #FCFCFC !important; }
+html.theme-dawn .nav-item:hover,
+body.theme-dawn .nav-item:hover { background: rgba(0,0,0,0.05) !important; }
+html.theme-dawn .nav-item.active,
+body.theme-dawn .nav-item.active { background: rgba(0,0,0,0.08) !important; color: #0f172a !important; }
+
+html.theme-slate body,
+body.theme-slate { background: #e8edf3 !important; color: #0f172a !important; }
+html.theme-slate .sidebar,
+body.theme-slate .sidebar { background: #d7dee8 !important; border-right-color: #c5ceda !important; box-shadow: none !important; }
+html.theme-slate .main-content,
+body.theme-slate .main-content { background: #e8edf3 !important; }
+html.theme-slate .panel,
+html.theme-slate .panel-card,
+html.theme-slate .stat-card,
+html.theme-slate .form-panel,
+html.theme-slate .composer-card,
+html.theme-slate .ai-settings-card,
+html.theme-slate .settings-panel,
+html.theme-slate .chats-panel,
+body.theme-slate .panel,
+body.theme-slate .panel-card,
+body.theme-slate .stat-card,
+body.theme-slate .form-panel,
+body.theme-slate .composer-card,
+body.theme-slate .ai-settings-card,
+body.theme-slate .settings-panel,
+body.theme-slate .chats-panel { background: #f7f9fc !important; }
+html.theme-slate .nav-item.active,
+body.theme-slate .nav-item.active { background: #c9d5e5 !important; color: #0f172a !important; }
+
+html.theme-sand body,
+body.theme-sand { background: #f0ebe3 !important; color: #1c1917 !important; }
+html.theme-sand .sidebar,
+body.theme-sand .sidebar { background: #e4dcd0 !important; border-right-color: #d5cbbd !important; box-shadow: none !important; }
+html.theme-sand .main-content,
+body.theme-sand .main-content { background: #f0ebe3 !important; }
+html.theme-sand .panel,
+html.theme-sand .panel-card,
+html.theme-sand .stat-card,
+html.theme-sand .form-panel,
+html.theme-sand .composer-card,
+html.theme-sand .ai-settings-card,
+html.theme-sand .settings-panel,
+html.theme-sand .chats-panel,
+body.theme-sand .panel,
+body.theme-sand .panel-card,
+body.theme-sand .stat-card,
+body.theme-sand .form-panel,
+body.theme-sand .composer-card,
+body.theme-sand .ai-settings-card,
+body.theme-sand .settings-panel,
+body.theme-sand .chats-panel { background: #faf7f2 !important; }
+html.theme-sand .nav-item.active,
+body.theme-sand .nav-item.active { background: #d9cfc0 !important; color: #1c1917 !important; }
+
+html.theme-midnight body,
+body.theme-midnight { background: #0d1117 !important; color: #e5e7eb !important; }
+html.theme-midnight .sidebar,
+body.theme-midnight .sidebar {
+  background: #12181f !important; border-right-color: #1f2937 !important; color: #e5e7eb !important; box-shadow: none !important;
+}
+html.theme-midnight .main-content,
+body.theme-midnight .main-content { background: #0d1117 !important; }
+html.theme-midnight .panel,
+html.theme-midnight .panel-card,
+html.theme-midnight .stat-card,
+html.theme-midnight .form-panel,
+html.theme-midnight .composer-card,
+html.theme-midnight .ai-settings-card,
+html.theme-midnight .settings-panel,
+html.theme-midnight .chats-panel,
+body.theme-midnight .panel,
+body.theme-midnight .panel-card,
+body.theme-midnight .stat-card,
+body.theme-midnight .form-panel,
+body.theme-midnight .composer-card,
+body.theme-midnight .ai-settings-card,
+body.theme-midnight .settings-panel,
+body.theme-midnight .chats-panel {
+  background: #161d27 !important; border-color: #273244 !important; color: #e5e7eb !important;
+}
+html.theme-midnight .page-title,
+html.theme-midnight .nav-item,
+html.theme-midnight .nav-subitem,
+html.theme-midnight .nav-dropdown-toggle,
+html.theme-midnight a,
+body.theme-midnight .page-title,
+body.theme-midnight .nav-item,
+body.theme-midnight .nav-subitem,
+body.theme-midnight .nav-dropdown-toggle { color: #e5e7eb !important; }
+html.theme-midnight .nav-item:hover,
+body.theme-midnight .nav-item:hover { background: #1c2530 !important; }
+html.theme-midnight .nav-item.active,
+body.theme-midnight .nav-item.active { background: #243041 !important; color: #93c5fd !important; }
+html.theme-midnight .btn-top,
+html.theme-midnight .tool-btn,
+html.theme-midnight .btn-filter,
+html.theme-midnight .btn-export,
+body.theme-midnight .btn-top,
+body.theme-midnight .tool-btn,
+body.theme-midnight .btn-filter,
+body.theme-midnight .btn-export {
+  background: #1c2530 !important; border-color: #334155 !important; color: #e5e7eb !important;
+}
+html.theme-midnight .props-table th,
+html.theme-midnight .props-table td,
+body.theme-midnight .props-table th,
+body.theme-midnight .props-table td { border-color: #273244 !important; color: #e5e7eb !important; }
+html.theme-midnight .props-table th,
+body.theme-midnight .props-table th { background: #12181f !important; }
+html.theme-midnight input,
+html.theme-midnight select,
+html.theme-midnight textarea,
+body.theme-midnight input,
+body.theme-midnight select,
+body.theme-midnight textarea {
+  background: #12181f !important; border-color: #334155 !important; color: #e5e7eb !important;
+}
+html.theme-midnight .sidebar-footer,
+html.theme-midnight .logout-btn,
+body.theme-midnight .sidebar-footer,
+body.theme-midnight .logout-btn { color: #e5e7eb !important; }

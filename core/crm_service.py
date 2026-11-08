@@ -178,11 +178,59 @@ def delete_property(user: dict, property_id: int, confirm: bool = False) -> dict
     if user["role"] != "admin":
         raise PermissionError("Only admins can delete properties.")
     with db_conn() as conn:
-        row = conn.execute("SELECT id, title FROM properties WHERE id = ?", (int(property_id),)).fetchone()
+        row = conn.execute(
+            "SELECT id, title FROM properties WHERE id = ?", (int(property_id),)
+        ).fetchone()
         if not row:
             raise ValueError(f"Property {property_id} not found")
+
+        # Remove deals that point at this property (and their payments)
+        deal_ids = [
+            r["id"]
+            for r in conn.execute(
+                "SELECT id FROM deals WHERE property_id = ?", (int(property_id),)
+            ).fetchall()
+        ]
+        for did in deal_ids:
+            for table in ("deal_payments", "deal_brokerage_payments"):
+                try:
+                    conn.execute(f"DELETE FROM {table} WHERE deal_id = ?", (did,))
+                except Exception:
+                    pass
+            conn.execute("DELETE FROM deals WHERE id = ?", (did,))
+
+        for sql in (
+            "DELETE FROM favorites WHERE property_id = ?",
+            "DELETE FROM client_properties WHERE property_id = ?",
+            "DELETE FROM inquiries WHERE property_id = ?",
+        ):
+            try:
+                conn.execute(sql, (int(property_id),))
+            except Exception:
+                pass
+        try:
+            conn.execute(
+                "UPDATE appointments SET property_id = NULL WHERE property_id = ?",
+                (int(property_id),),
+            )
+        except Exception:
+            pass
+        try:
+            conn.execute(
+                "UPDATE tasks SET related_property_id = NULL WHERE related_property_id = ?",
+                (int(property_id),),
+            )
+        except Exception:
+            pass
+
         conn.execute("DELETE FROM properties WHERE id = ?", (int(property_id),))
-    return {"ok": True, "deleted_property_id": int(property_id), "title": row["title"]}
+    return {
+        "ok": True,
+        "deleted_property_id": int(property_id),
+        "title": row["title"],
+        "deleted_related_deals": len(deal_ids),
+        "message": "Property and related deals removed. Live stats stay consistent.",
+    }
 
 
 # ----- Clients / Leads (clients table is pipeline source of truth) -----
@@ -559,16 +607,121 @@ def update_deal(user: dict, deal_id: int, **kwargs) -> dict:
     return {"ok": True, "deal": row}
 
 
-def delete_deal(user: dict, deal_id: int, confirm: bool = False) -> dict:
+def _cascade_delete_deal_and_property(conn, deal_id: int, delete_property: bool = True):
+    """
+    Remove a deal and optionally its linked property.
+    Cleans payments / favorites / inquiries so analytics and agent views
+    only ever count remaining live rows (no orphaned FK noise).
+    """
+    deal = conn.execute(
+        "SELECT id, title, property_id FROM deals WHERE id = ?", (int(deal_id),)
+    ).fetchone()
+    if not deal:
+        return None, None
+
+    prop_id = deal["property_id"]
+    title = deal["title"]
+
+    for table in ("deal_payments", "deal_brokerage_payments"):
+        try:
+            conn.execute(f"DELETE FROM {table} WHERE deal_id = ?", (int(deal_id),))
+        except Exception:
+            pass
+
+    conn.execute("DELETE FROM deals WHERE id = ?", (int(deal_id),))
+
+    prop_title = None
+    if delete_property and prop_id:
+        prop = conn.execute(
+            "SELECT id, title FROM properties WHERE id = ?", (int(prop_id),)
+        ).fetchone()
+        if prop:
+            prop_title = prop["title"]
+            other = conn.execute(
+                "SELECT id FROM deals WHERE property_id = ?", (int(prop_id),)
+            ).fetchall()
+            for od in other:
+                for table in ("deal_payments", "deal_brokerage_payments"):
+                    try:
+                        conn.execute(f"DELETE FROM {table} WHERE deal_id = ?", (od["id"],))
+                    except Exception:
+                        pass
+                conn.execute("DELETE FROM deals WHERE id = ?", (od["id"],))
+
+            for sql in (
+                "DELETE FROM favorites WHERE property_id = ?",
+                "DELETE FROM client_properties WHERE property_id = ?",
+                "DELETE FROM inquiries WHERE property_id = ?",
+            ):
+                try:
+                    conn.execute(sql, (int(prop_id),))
+                except Exception:
+                    pass
+            try:
+                conn.execute(
+                    "UPDATE appointments SET property_id = NULL WHERE property_id = ?",
+                    (int(prop_id),),
+                )
+            except Exception:
+                pass
+            try:
+                conn.execute(
+                    "UPDATE tasks SET related_property_id = NULL WHERE related_property_id = ?",
+                    (int(prop_id),),
+                )
+            except Exception:
+                pass
+
+            conn.execute("DELETE FROM properties WHERE id = ?", (int(prop_id),))
+
+    return title, prop_title
+
+
+def delete_deal(
+    user: dict,
+    deal_id: int,
+    confirm: bool = False,
+    also_property: bool = False,
+) -> dict:
+    """
+    Delete a deal. Admin may pass also_property=true to cascade-delete the
+    linked property (and related live rows) so the whole CRM stays in sync.
+    Agents may only delete their own deals and never cascade the property.
+    """
     require_staff(user)
     if not confirm:
-        return {"ok": False, "needs_confirmation": True, "message": "Pass confirm=true to delete"}
+        return {
+            "ok": False,
+            "needs_confirmation": True,
+            "message": "Pass confirm=true to delete. Admin may also pass also_property=true to remove the linked property.",
+        }
+
     with db_conn() as conn:
-        row = conn.execute("SELECT id, title FROM deals WHERE id = ?", (int(deal_id),)).fetchone()
+        row = conn.execute(
+            "SELECT id, title, property_id, agent_id FROM deals WHERE id = ?",
+            (int(deal_id),),
+        ).fetchone()
         if not row:
             raise ValueError("deal not found")
-        conn.execute("DELETE FROM deals WHERE id = ?", (int(deal_id),))
-    return {"ok": True, "deleted_deal_id": int(deal_id), "title": row["title"]}
+
+        if user.get("role") == "agent":
+            if row["agent_id"] and int(row["agent_id"]) != int(user["id"]):
+                raise PermissionError("You can only delete your own deals.")
+            # Agents never cascade-delete inventory
+            also_property = False
+        elif user.get("role") != "admin" and also_property:
+            raise PermissionError("Only admins can cascade-delete the property.")
+
+        title, prop_title = _cascade_delete_deal_and_property(
+            conn, int(deal_id), delete_property=bool(also_property)
+        )
+
+    out = {"ok": True, "deleted_deal_id": int(deal_id), "title": title}
+    if prop_title:
+        out["deleted_property_title"] = prop_title
+        out["message"] = "Deal and linked property removed. Live stats and agent views updated."
+    return out
+
 
 
 def change_deal_stage(user: dict, deal_id: int, stage: str) -> dict:

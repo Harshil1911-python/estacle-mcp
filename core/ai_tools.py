@@ -10,7 +10,23 @@ from core.db import get_db, migrate_db
 from core.helpers import log_activity, get_setting
 
 # ---- OpenAI-style tool schemas for Groq ----
-TOOL_SCHEMAS: List[dict] = [
+TOOL_SCHEMAS: List[
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_url",
+            "description": "Fetch and extract readable text from a public http/https webpage URL the user provided. Use when the user asks to scrape, read, or import data from a link.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Full http or https URL"},
+                    "max_chars": {"type": "integer", "description": "Max characters to return (default 8000)"}
+                },
+                "required": ["url"],
+            },
+        },
+    },
+dict] = [
     {
         "type": "function",
         "function": {
@@ -363,6 +379,22 @@ TOOL_SCHEMAS: List[dict] = [
                     "filename": {"type": "string"},
                 },
                 "required": ["entity", "entity_id", "filename"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "attach_video",
+            "description": "Attach an uploaded video filename to a property videos field. Use the filename from the user upload. Prefer this for mp4/webm/mov.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entity": {"type": "string", "description": "property (default)"},
+                    "entity_id": {"type": "integer"},
+                    "filename": {"type": "string"},
+                },
+                "required": ["entity_id", "filename"],
             },
         },
     },
@@ -855,6 +887,85 @@ def exec_get_deals(args: dict, user_id: int) -> dict:
         return {"ok": False, "error": "Could not load deals"}
 
 
+
+def exec_fetch_url(args: dict, user_id: int) -> dict:
+    """Scrape public webpage text for the assistant (user-provided URL only)."""
+    import re
+    import urllib.request
+    import urllib.error
+    from html.parser import HTMLParser
+    from urllib.parse import urlparse
+
+    url = (args.get("url") or "").strip()
+    if not url:
+        return {"ok": False, "error": "url required"}
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return {"ok": False, "error": "Only public http/https URLs are allowed"}
+    host = (parsed.hostname or "").lower()
+    if host in ("localhost", "127.0.0.1", "0.0.0.0") or host.startswith("192.168.") or host.startswith("10.") or host.endswith(".local"):
+        return {"ok": False, "error": "Local or private network URLs are not allowed"}
+    try:
+        max_chars = int(args.get("max_chars") or 8000)
+    except Exception:
+        max_chars = 8000
+    max_chars = max(500, min(max_chars, 20000))
+
+    class _TextExtractor(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.parts = []
+            self._skip = 0
+        def handle_starttag(self, tag, attrs):
+            if tag in ("script", "style", "noscript", "svg", "head"):
+                self._skip += 1
+        def handle_endtag(self, tag):
+            if tag in ("script", "style", "noscript", "svg", "head") and self._skip:
+                self._skip -= 1
+        def handle_data(self, data):
+            if self._skip:
+                return
+            text = data.strip()
+            if text:
+                self.parts.append(text)
+
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "SereniaAI-Estacle/1.0 (+CRM assistant; user-requested fetch)",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            ctype = (resp.headers.get("Content-Type") or "").lower()
+            raw = resp.read(2_000_000)
+        if "application/json" in ctype:
+            text = raw.decode("utf-8", errors="ignore")
+        else:
+            html = raw.decode("utf-8", errors="ignore")
+            parser = _TextExtractor()
+            try:
+                parser.feed(html)
+            except Exception:
+                pass
+            text = "\n".join(parser.parts)
+            text = re.sub(r"\n{3,}", "\n\n", text).strip()
+            if not text:
+                text = re.sub(r"<[^>]+>", " ", html)
+                text = re.sub(r"\s+", " ", text).strip()
+        text = text[:max_chars]
+        _audit(user_id, "AI fetch_url", "url", None, url[:200])
+        return {"ok": True, "url": url, "chars": len(text), "text": text}
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "error": "HTTP {}".format(e.code)}
+    except Exception as e:
+        return {"ok": False, "error": "Could not fetch URL"}
+
+
 def exec_attach_image(args: dict, user_id: int) -> dict:
     db = get_db()
     migrate_db()
@@ -866,6 +977,10 @@ def exec_attach_image(args: dict, user_id: int) -> dict:
     filename = os.path.basename((args.get("filename") or "").strip())
     if not filename or ".." in filename:
         return {"ok": False, "error": "invalid filename"}
+    # Route videos through attach_video automatically
+    lower = filename.lower()
+    if lower.endswith((".mp4", ".webm", ".mov", ".m4v")):
+        return exec_attach_video({"entity": "property", "entity_id": eid, "filename": filename}, user_id)
     if entity in ("property", "properties"):
         row = db.execute("SELECT id, photos FROM properties WHERE id = ?", (eid,)).fetchone()
         if not row:
@@ -904,6 +1019,40 @@ def exec_attach_image(args: dict, user_id: int) -> dict:
         _audit(user_id, "AI attach_image", "client", eid, filename)
         return {"ok": True, "entity": "client", "entity_id": eid, "filename": filename}
     return {"ok": False, "error": "entity must be property, user, or client"}
+
+
+def exec_attach_video(args: dict, user_id: int) -> dict:
+    db = get_db()
+    migrate_db()
+    try:
+        eid = int(args["entity_id"])
+    except Exception:
+        return {"ok": False, "error": "entity_id required"}
+    filename = os.path.basename((args.get("filename") or "").strip())
+    if not filename or ".." in filename:
+        return {"ok": False, "error": "invalid filename"}
+    row = db.execute("SELECT id, videos FROM properties WHERE id = ?", (eid,)).fetchone()
+    if not row:
+        return {"ok": False, "error": "property not found"}
+    videos = [v.strip() for v in (row["videos"] or "").split(",") if v.strip()]
+    if filename not in videos:
+        videos.append(filename)
+    try:
+        db.execute(
+            "UPDATE properties SET videos = ? WHERE id = ?",
+            (",".join(videos), eid),
+        )
+    except Exception:
+        return {"ok": False, "error": "could not update property videos"}
+    db.commit()
+    _audit(user_id, "AI attach_video", "property", eid, filename)
+    return {
+        "ok": True,
+        "entity": "property",
+        "entity_id": eid,
+        "filename": filename,
+        "videos": videos,
+    }
 
 
 def exec_seed_demo_deals(args: dict, user_id: int) -> dict:
@@ -1236,7 +1385,9 @@ EXECUTORS: Dict[str, Callable[[dict, int], dict]] = {
     "delete_task": exec_delete_task,
     "get_deals": exec_get_deals,
     "create_deal": exec_create_deal,
+    "fetch_url": exec_fetch_url,
     "attach_image": exec_attach_image,
+    "attach_video": exec_attach_video,
     "seed_demo_deals": exec_seed_demo_deals,
     "update_deal": exec_update_deal,
     "delete_deal": exec_delete_deal,
@@ -1262,17 +1413,32 @@ def run_tool(name: str, arguments: dict, user_id: int) -> dict:
         return {"ok": False, "error": str(e)}
 
 
-SYSTEM_PROMPT = """You are Estacle AI — the official intelligent CRM operator for Estacle, the real-estate platform by TechSerenia.
+SYSTEM_PROMPT = """You are Serenia AI — the official intelligent CRM operator for Estacle, the real-estate platform by TechSerenia.
 
 OWNER & BRAND
+- Product brand for this assistant is Serenia AI (by TechSerenia / Estacle).
 - Estacle and TechSerenia are owned by Harshil Sandip Khandhar.
-- Address the product as Estacle; when relevant you may acknowledge the founder (Harshil Sandip Khandhar) and TechSerenia professionally.
+- Address yourself as Serenia AI; the CRM product remains Estacle.
 - Tone: polished, concise, trustworthy SaaS CRM assistant — never casual slang.
 
 HELPDESK
 - You also act as an in-app helpdesk for Estacle.
-- If the user asks how to do something in the UI, explain steps using Estacle admin navigation (Overview, Users, Properties, Clients, Leads, Deals, Tasks, etc.).
+- If the user asks how to do something in the UI, explain steps using Estacle admin navigation (Overview, Users, Properties, Clients, Leads, Deals, Tasks, Appointments, Documents, Settings, Serenia AI).
 - You may both guide the user and offer to perform the action via tools when appropriate.
+
+HOW TO USE ESTACLE (product knowledge)
+- Overview → Dashboard: KPIs and recent activity. Analytics: charts and performance. Global Search: find users, properties, clients, deals, leads, tasks across the CRM.
+- Users: list, add, edit agents/admins/customers; avatars; activate/deactivate.
+- Properties: All Properties, Display Properties, Compare. Fields include title, price, type, status, address, city, beds/baths, area, listing type, photos, videos, agent.
+- Clients: full client records and pipeline statuses (lead, contacted, qualified, negotiation, closed, lost). Leads board is driven by client status.
+- Deals: All Deals, Pipeline (offer → negotiation → under_contract → closed → lost), Overall Summary. Cascade delete can remove deal + linked property without breaking live stats.
+- Appointments: schedule viewings/meetings with client, property, agent, status (scheduled/completed/cancelled/no_show).
+- Tasks, Documents, Inquiries, Activity log, Commission, Reports are available under their menu sections.
+- Settings → General: company profile, currency, Dawn mode appearance.
+- Settings → Serenia AI: Groq API key, model, Prompt library, Company knowledge (RAG) documents.
+- Serenia AI chat: natural language CRM operations, media attach (image/video/PDF), prompt library, saved chats.
+- Agent mode is scoped to the signed-in agent’s records; admin sees everything.
+- Prefer tools to read/write data; when explaining UI paths, be specific and ordered.
 
 DEALS
 - Deals pipeline stages: offer → negotiation → under_contract → closed → lost.
@@ -1281,10 +1447,23 @@ DEALS
 - Prefer stage (not status) when filtering or updating deals.
 - When listing deals, show title, stage, value, client, property in plain language.
 
-IMAGES
-- Users may upload images in chat. Filenames appear in the user message.
-- Use attach_image with entity (property|user|client), entity_id, and filename to save them.
-- Confirm what was attached in plain language; never show server paths.
+IMAGES, VIDEOS, AND DOCUMENTS
+- Users may upload images, screenshots, videos, and PDF/text brochures in chat.
+- When media is already attached in the same conversation, NEVER ask the user to upload it again.
+- If the user says "add her/him as a client" (or similar) with an image attached:
+  create the client immediately with best-effort fields (use a sensible full_name from context or "New client from photo"),
+  attach the image, and report what you created. Do not interrogate for every optional field first.
+- Missing email/phone is fine — leave them empty rather than blocking.
+- Use attach_image for photos/screenshots (property|user|client) and attach_video for property videos.
+- When extracted brochure text is provided, parse fields and call create/update tools without extra confirmation loops.
+- When the user says "fetch details from the image" and a file is attached but no OCR text is available,
+  explain briefly that the current model cannot read pixels, then still proceed with the user's stated intent
+  (e.g. create the client/property and attach the file). Offer optional fields only once, not repeatedly.
+- Confirm what was attached or created in plain language; never show server paths.
+
+COMPANY KNOWLEDGE
+- When company knowledge context is provided in the system message, prefer those documents for policy, process, and product answers.
+- Do not invent company rules that are not in the knowledge context or CRM data.
 
 TOOL CALLING
 - Emit only valid structured tool calls. Never write plans like “I will call create_deal 10 times” as the model output.
@@ -1294,6 +1473,14 @@ MULTI DELETE
 - When the user asks to delete several items (e.g. “delete properties 3, 5 and 9” or “remove these clients”), use bulk_delete once with entity + ids — do not call delete_* many times unless only one id.
 - Still rely on confirmation; never claim deletes finished until tools return ok:true after confirm.
 - Summarize what will be deleted in business language (names/titles), not raw JSON.
+
+WEB LINKS
+- You CAN access public web pages via the fetch_url tool and via server-fetched page content included in the user message.
+- NEVER say you cannot scrape, browse, or retrieve external websites.
+- When page content is already included under "Content fetched from …", use that text immediately.
+- Otherwise call fetch_url with the user URL, then summarize or create CRM records from the result.
+- Never invent page content; only use fetched text.
+- Refuse local/private network addresses only.
 
 OPERATIONS
 - You execute real database operations only through the provided tools.
