@@ -318,18 +318,144 @@ def admin_deal_stage(deal_id):
     return redirect(url_for('admin.admin_deals'))
 
 
+def _cascade_delete_deal_and_property(db, deal_id, delete_property=True):
+    """
+    Remove a deal and (optionally) its linked property from the live CRM.
+    Cleans related payment / favorite / inquiry rows so analytics and agent
+    views stay consistent and never hit broken foreign references.
+    Historical stats simply reflect remaining live rows (no orphaned data).
+    """
+    deal = db.execute(
+        'SELECT id, title, property_id FROM deals WHERE id=?', (deal_id,)
+    ).fetchone()
+    if not deal:
+        return None, None
+
+    prop_id = deal['property_id']
+    title = deal['title']
+
+    # Payments / brokerage tied to this deal
+    try:
+        db.execute('DELETE FROM deal_payments WHERE deal_id=?', (deal_id,))
+    except Exception:
+        pass
+    try:
+        db.execute('DELETE FROM deal_brokerage_payments WHERE deal_id=?', (deal_id,))
+    except Exception:
+        pass
+
+    db.execute('DELETE FROM deals WHERE id=?', (deal_id,))
+
+    prop_title = None
+    if delete_property and prop_id:
+        prop = db.execute('SELECT id, title FROM properties WHERE id=?', (prop_id,)).fetchone()
+        if prop:
+            prop_title = prop['title']
+            # Other deals still pointing at this property → remove them too so property can go
+            other_deals = db.execute(
+                'SELECT id FROM deals WHERE property_id=?', (prop_id,)
+            ).fetchall()
+            for od in other_deals:
+                try:
+                    db.execute('DELETE FROM deal_payments WHERE deal_id=?', (od['id'],))
+                    db.execute('DELETE FROM deal_brokerage_payments WHERE deal_id=?', (od['id'],))
+                except Exception:
+                    pass
+                db.execute('DELETE FROM deals WHERE id=?', (od['id'],))
+
+            # Related tables that reference the property
+            for sql in (
+                'DELETE FROM favorites WHERE property_id=?',
+                'DELETE FROM client_properties WHERE property_id=?',
+                'DELETE FROM inquiries WHERE property_id=?',
+            ):
+                try:
+                    db.execute(sql, (prop_id,))
+                except Exception:
+                    pass
+            try:
+                db.execute(
+                    "UPDATE appointments SET property_id=NULL WHERE property_id=?",
+                    (prop_id,),
+                )
+            except Exception:
+                pass
+            try:
+                db.execute(
+                    "UPDATE tasks SET related_property_id=NULL WHERE related_property_id=?",
+                    (prop_id,),
+                )
+            except Exception:
+                pass
+
+            db.execute('DELETE FROM properties WHERE id=?', (prop_id,))
+
+    return title, prop_title
+
+
 @admin.route('/admin/deals/delete/<int:deal_id>', methods=['POST'])
 @login_required
 @role_required('admin')
 def admin_delete_deal(deal_id):
     db = get_db()
-    deal = db.execute('SELECT id, title FROM deals WHERE id=?', (deal_id,)).fetchone()
-    db.execute('DELETE FROM deals WHERE id=?', (deal_id,))
+    migrate_db()
+    # From Overall Summary we also remove the linked property
+    also_property = request.form.get('also_property', '0') in ('1', 'true', 'yes', 'on')
+    title, prop_title = _cascade_delete_deal_and_property(
+        db, deal_id, delete_property=also_property
+    )
     db.commit()
-    if deal:
-        log_activity('Deleted deal', 'deal', deal_id, deal['title'])
-    flash('Deal deleted.', 'success')
+    if title:
+        log_activity(
+            'Deleted deal' + (' + property' if prop_title else ''),
+            'deal',
+            deal_id,
+            title + (f' / property: {prop_title}' if prop_title else ''),
+        )
+        if prop_title:
+            flash(f'Deal and property “{prop_title}” removed. Live stats & agent views updated.', 'success')
+        else:
+            flash('Deal deleted.', 'success')
+    else:
+        flash('Deal not found.', 'warning')
+
+    next_url = request.form.get('next') or request.args.get('next') or ''
+    if next_url == 'summary':
+        return redirect(url_for('admin.admin_deals_summary'))
     return redirect(url_for('admin.admin_deals'))
+
+
+@admin.route('/admin/deals/summary')
+@login_required
+@role_required('admin')
+def admin_deals_summary():
+    """Overall Summary — every deal with status, agent, customer, and cascade delete."""
+    db = get_db()
+    migrate_db()
+    q = request.args.get('q', '').strip()
+    stage_filter = request.args.get('stage', '').strip()
+    if stage_filter:
+        stage_filter = _normalize_stage(stage_filter)
+        if stage_filter not in STAGES:
+            stage_filter = ''
+
+    rows = _deals_query(db, q=q, agent_id='', stage_filter=stage_filter)
+    stats = {st: sum(1 for r in rows if r['stage'] == st) for st in STAGES}
+    stats['total'] = len(rows)
+    stats['closed_or_completed'] = stats.get('closed', 0)
+    currency = get_setting('currency', 'INR')
+
+    return render_template(
+        'admin_deals_summary.html',
+        deals=rows,
+        stats=stats,
+        stages=STAGES,
+        stage_labels=STAGE_LABELS,
+        q=q,
+        stage_filter=stage_filter,
+        currency=currency,
+        format_money=format_money,
+    )
 
 
 

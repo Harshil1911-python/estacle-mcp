@@ -773,3 +773,30 @@ def admin_export_properties():
 
 
 
+
+
+
+@admin.route('/share/property/<int:prop_id>')
+def share_property_public(prop_id):
+    """Public property card for QR / live share links (no login)."""
+    db = get_db()
+    migrate_db()
+    prop = db.execute(
+        "SELECT p.*, u.full_name as agent_name FROM properties p "
+        "LEFT JOIN users u ON p.agent_id = u.id WHERE p.id = ?",
+        (prop_id,),
+    ).fetchone()
+    if not prop:
+        return ("Property not found", 404)
+    prop = dict(prop)
+    photos = [x.strip() for x in (prop.get('photos') or '').split(',') if x.strip()]
+    videos = [x.strip() for x in (prop.get('videos') or '').split(',') if x.strip()]
+    currency = get_setting('currency', 'INR')
+    return render_template(
+        'public_property_share.html',
+        prop=prop,
+        photos=photos,
+        videos=videos,
+        currency=currency,
+        format_money=format_money,
+    )

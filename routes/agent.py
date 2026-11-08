@@ -76,4 +76,167 @@ def agent_properties():
     return render_template('agent_properties.html', properties=properties, currency=currency, format_money=format_money)
 
 
+AGENT_STAGES = ('offer', 'negotiation', 'under_contract', 'closed', 'lost')
+AGENT_STAGE_LABELS = {
+    'offer': 'Offer',
+    'negotiation': 'Negotiation',
+    'under_contract': 'Under Contract',
+    'closed': 'Closed',
+    'lost': 'Lost',
+}
+
+
+def _agent_normalize_stage(st):
+    st = (st or 'offer').strip().lower().replace(' ', '_')
+    aliases = {
+        'under contract': 'under_contract',
+        'under-contract': 'under_contract',
+        'won': 'closed',
+        'sold': 'closed',
+    }
+    st = aliases.get(st, st)
+    if st not in AGENT_STAGES:
+        st = 'offer'
+    return st
+
+
+def _agent_deals_query(db, agent_id, q='', stage_filter=''):
+    sql = (
+        "SELECT d.*, p.title as property_title, c.full_name as client_name, "
+        "u.full_name as agent_name "
+        "FROM deals d "
+        "LEFT JOIN properties p ON d.property_id = p.id "
+        "LEFT JOIN clients c ON d.client_id = c.id "
+        "LEFT JOIN users u ON d.agent_id = u.id "
+        "WHERE d.agent_id = ?"
+    )
+    params = [agent_id]
+    if q:
+        sql += (
+            " AND (d.title LIKE ? OR IFNULL(p.title,'') LIKE ? OR IFNULL(c.full_name,'') LIKE ? "
+            "OR IFNULL(d.notes,'') LIKE ?)"
+        )
+        params.extend(['%' + q + '%'] * 4)
+    if stage_filter in AGENT_STAGES:
+        sql += " AND d.stage = ?"
+        params.append(stage_filter)
+    sql += " ORDER BY d.updated_at DESC"
+    rows = [dict(r) for r in db.execute(sql, params).fetchall()]
+    for r in rows:
+        r['stage'] = _agent_normalize_stage(r.get('stage'))
+        try:
+            r['commission_amount'] = (
+                float(r.get('value') or 0) * float(r.get('commission_rate') or 0)
+            ) / 100.0
+        except Exception:
+            r['commission_amount'] = 0
+    return rows
+
+
+@agent.route('/agent/deals')
+@login_required
+@role_required('agent')
+def agent_deals():
+    """Agent's deals list — scoped to this agent only."""
+    db = get_db()
+    migrate_db()
+    agent_id = session['user_id']
+    q = request.args.get('q', '').strip()
+    stage_filter = request.args.get('stage', '').strip()
+    if stage_filter:
+        stage_filter = _agent_normalize_stage(stage_filter)
+        if stage_filter not in AGENT_STAGES:
+            stage_filter = ''
+    rows = _agent_deals_query(db, agent_id, q=q, stage_filter=stage_filter)
+    stats = {st: sum(1 for r in rows if r['stage'] == st) for st in AGENT_STAGES}
+    stats['total'] = len(rows)
+    currency = get_setting('currency', 'INR')
+    return render_template(
+        'agent_deals.html',
+        deals=rows,
+        stats=stats,
+        stages=AGENT_STAGES,
+        stage_labels=AGENT_STAGE_LABELS,
+        q=q,
+        stage_filter=stage_filter,
+        currency=currency,
+        format_money=format_money,
+        active='deals',
+    )
+
+
+@agent.route('/agent/deals/summary')
+@login_required
+@role_required('agent')
+def agent_deals_summary():
+    """
+    Overall Summary for agent — same columns as admin (status, customer, property)
+    but scoped to this agent's deals. Read-only cascade delete is admin-only;
+    agent can request removal of their own deal (not the property).
+    """
+    db = get_db()
+    migrate_db()
+    agent_id = session['user_id']
+    q = request.args.get('q', '').strip()
+    stage_filter = request.args.get('stage', '').strip()
+    if stage_filter:
+        stage_filter = _agent_normalize_stage(stage_filter)
+        if stage_filter not in AGENT_STAGES:
+            stage_filter = ''
+    rows = _agent_deals_query(db, agent_id, q=q, stage_filter=stage_filter)
+    stats = {st: sum(1 for r in rows if r['stage'] == st) for st in AGENT_STAGES}
+    stats['total'] = len(rows)
+    stats['closed_or_completed'] = stats.get('closed', 0)
+    currency = get_setting('currency', 'INR')
+    return render_template(
+        'agent_deals_summary.html',
+        deals=rows,
+        stats=stats,
+        stages=AGENT_STAGES,
+        stage_labels=AGENT_STAGE_LABELS,
+        q=q,
+        stage_filter=stage_filter,
+        currency=currency,
+        format_money=format_money,
+        active='deals_summary',
+    )
+
+
+@agent.route('/agent/deals/delete/<int:deal_id>', methods=['POST'])
+@login_required
+@role_required('agent')
+def agent_delete_deal(deal_id):
+    """Agent may remove their own deal only — never cascades the property."""
+    db = get_db()
+    migrate_db()
+    agent_id = session['user_id']
+    deal = db.execute(
+        'SELECT id, title, agent_id FROM deals WHERE id = ?', (deal_id,)
+    ).fetchone()
+    if not deal:
+        flash('Deal not found.', 'warning')
+        return redirect(url_for('agent.agent_deals_summary'))
+    if deal['agent_id'] != agent_id:
+        flash('You can only delete your own deals.', 'danger')
+        return redirect(url_for('agent.agent_deals_summary'))
+
+    try:
+        db.execute('DELETE FROM deal_payments WHERE deal_id = ?', (deal_id,))
+    except Exception:
+        pass
+    try:
+        db.execute('DELETE FROM deal_brokerage_payments WHERE deal_id = ?', (deal_id,))
+    except Exception:
+        pass
+    db.execute('DELETE FROM deals WHERE id = ?', (deal_id,))
+    db.commit()
+    log_activity('Agent deleted deal', 'deal', deal_id, deal['title'])
+    flash('Deal removed. Your dashboard and pipeline counts are updated.', 'success')
+
+    next_url = request.form.get('next') or ''
+    if next_url == 'list':
+        return redirect(url_for('agent.agent_deals'))
+    return redirect(url_for('agent.agent_deals_summary'))
+
+
 

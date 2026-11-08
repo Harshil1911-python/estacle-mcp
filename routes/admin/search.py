@@ -45,7 +45,9 @@ def admin_search():
         'properties': db.execute('SELECT COUNT(*) FROM properties').fetchone()[0],
         'clients': db.execute('SELECT COUNT(*) FROM clients').fetchone()[0],
         'deals': db.execute('SELECT COUNT(*) FROM deals').fetchone()[0],
-        'leads': db.execute('SELECT COUNT(*) FROM leads').fetchone()[0],
+        'leads': db.execute(
+            "SELECT COUNT(*) FROM clients WHERE lower(IFNULL(status,'')) = 'lead'"
+        ).fetchone()[0],
         'inquiries': db.execute('SELECT COUNT(*) FROM inquiries').fetchone()[0],
         'appointments': db.execute('SELECT COUNT(*) FROM appointments').fetchone()[0],
         'tasks': db.execute('SELECT COUNT(*) FROM tasks').fetchone()[0],
@@ -126,23 +128,34 @@ def admin_search():
                 ).fetchall()
 
         if want('leads'):
+            # Global Search "Leads" = clients with status exactly "lead"
             if q:
-                lead_sql = (
-                    "SELECT id, full_name, email, phone, source, interest, status, budget FROM leads "
-                    "WHERE full_name LIKE ? OR email LIKE ? OR phone LIKE ? OR source LIKE ? "
-                    "OR interest LIKE ? OR notes LIKE ?"
+                client_lead_sql = (
+                    "SELECT id, full_name, email, phone, status, budget, "
+                    "preferred_city as interest, notes "
+                    "FROM clients WHERE lower(IFNULL(status,'')) = 'lead' "
+                    "AND (full_name LIKE ? OR email LIKE ? OR phone LIKE ? "
+                    "OR IFNULL(notes,'') LIKE ? OR IFNULL(preferred_city,'') LIKE ?)"
                 )
-                lead_params = [like, like, like, like, like, like]
+                client_params = [like, like, like, like, like]
                 if num is not None:
-                    lead_sql += " OR budget = ? OR CAST(budget AS TEXT) LIKE ?"
-                    lead_params.extend([num, like])
-                lead_sql += " LIMIT 50"
-                results['leads'] = db.execute(lead_sql, lead_params).fetchall()
+                    client_lead_sql += " AND (budget = ? OR CAST(budget AS TEXT) LIKE ?)"
+                    client_params.extend([num, like])
+                client_lead_sql += " ORDER BY id DESC LIMIT 50"
+                client_leads = [dict(r) for r in db.execute(client_lead_sql, client_params).fetchall()]
+                for r in client_leads:
+                    r['source'] = r.get('source') or 'lead'
+                results['leads'] = client_leads
             else:
-                results['leads'] = db.execute(
-                    "SELECT id, full_name, email, phone, source, interest, status, budget FROM leads "
-                    "ORDER BY created_at DESC LIMIT 50"
-                ).fetchall()
+                client_leads = [dict(r) for r in db.execute(
+                    "SELECT id, full_name, email, phone, status, budget, "
+                    "preferred_city as interest, notes "
+                    "FROM clients WHERE lower(IFNULL(status,'')) = 'lead' "
+                    "ORDER BY id DESC LIMIT 50"
+                ).fetchall()]
+                for r in client_leads:
+                    r['source'] = r.get('source') or 'lead'
+                results['leads'] = client_leads
 
         if want('inquiries'):
             if q:
