@@ -26,8 +26,8 @@
         </div>
 
         <a href="{{ url_for('admin.admin_ai') }}" class="nav-item {% if active == 'ai' %}active{% endif %}">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a5 5 0 0 1 5 5v1h1a3 3 0 0 1 0 6h-1v1a5 5 0 0 1-10 0v-1H6a3 3 0 0 1 0-6h1V8a5 5 0 0 1 5-5z"/><circle cx="9.5" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="11" r="1" fill="currentColor" stroke="none"/></svg>
-            <span>Estacle AI</span>
+            <img class="nav-icon" src="{{ url_for('static', filename='images/serenia-icon.png') }}" alt="" style="width:20px;height:20px;object-fit:contain;border-radius:50%">
+            <span>Serenia AI</span>
         </a>
 
         <a href="{{ url_for('admin.admin_users') }}" class="nav-item {% if active in ['users', 'add_user', 'edit_user'] %}active{% endif %}">
@@ -60,7 +60,7 @@
             </div>
         </div>
 
-        <div class="nav-dropdown {% if active in ['deals', 'deals_pipeline', 'add_deal', 'deal_payments', 'brokerage'] %}open has-active{% endif %}">
+        <div class="nav-dropdown {% if active in ['deals', 'deals_pipeline', 'add_deal', 'deal_payments', 'brokerage', 'deals_summary'] %}open has-active{% endif %}">
             <button type="button" class="nav-dropdown-toggle" onclick="this.parentElement.classList.toggle('open')">
                 <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 <span>Deals</span>
@@ -71,6 +71,7 @@
                 <a href="{{ url_for('admin.admin_deals_pipeline') }}" class="nav-subitem {% if active == 'deals_pipeline' %}active{% endif %}">Pipeline</a>
                 <a href="{{ url_for('admin.admin_track_payments') }}" class="nav-subitem {% if active == 'deal_payments' %}active{% endif %}">Track Payment</a>
                 <a href="{{ url_for('admin.admin_brokerage_payments') }}" class="nav-subitem {% if active == 'brokerage' %}active{% endif %}">Brokerage Payments</a>
+                <a href="{{ url_for('admin.admin_deals_summary') }}" class="nav-subitem {% if active == 'deals_summary' %}active{% endif %}">Overall Summary</a>
             </div>
         </div>
 
@@ -140,6 +141,7 @@
             </button>
             <div class="nav-dropdown-menu">
                 <a href="{{ url_for('admin.admin_settings') }}" class="nav-subitem {% if active == 'settings' %}active{% endif %}">General</a>
+                <a href="{{ url_for('admin.admin_settings') }}#serenia-ai" class="nav-subitem">Serenia AI</a>
             </div>
         </div>
     </nav>
@@ -156,6 +158,8 @@
 })();
 </script>
 
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="shortcut icon" href="/static/favicon.png">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f172a">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -174,5 +178,28 @@
     var a = e.target.closest && e.target.closest('.sidebar a');
     if(a && window.innerWidth <= 900) closeNav();
   });
+})();
+</script>
+
+<script>
+(function(){
+  try {
+    var serverTheme = '{{ theme_mode|default("default") }}';
+    var theme = serverTheme;
+    if (!theme || theme === 'default' || theme === '') {
+      theme = localStorage.getItem('estacle_theme') || 'default';
+    }
+    theme = String(theme || 'default').toLowerCase();
+    var allowed = {dawn:1, slate:1, sand:1, midnight:1};
+    var classes = ['theme-dawn','theme-slate','theme-sand','theme-midnight'];
+    classes.forEach(function(c){ document.body.classList.remove(c); document.documentElement.classList.remove(c); });
+    if (allowed[theme]) {
+      document.body.classList.add('theme-' + theme);
+      document.documentElement.classList.add('theme-' + theme);
+      try { localStorage.setItem('estacle_theme', theme); } catch(e) {}
+    } else {
+      try { localStorage.setItem('estacle_theme', 'default'); } catch(e) {}
+    }
+  } catch(e) {}
 })();
 </script>

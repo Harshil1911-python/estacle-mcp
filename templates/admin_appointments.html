@@ -1,46 +1,333 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Estacle | Admin – Appointments</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
-    </head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Appointments</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; }
+.top-bar.dash-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px 10px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dash-top .page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 2px;
+  letter-spacing: -0.02em;
+}
+.dash-top .page-subtitle { font-size: 13px; color: #64748b; margin: 0; }
+.top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.btn-export:hover { background: #f8fafc; }
+.btn-create {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+}
+.btn-create:hover { background: #1e293b; color: #fff; }
+.page-wrap { padding: 12px 32px 32px; }
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 1100px) { .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat-card {
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.stat-card .label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+.stat-card .value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.03em;
+}
+.panel-card {
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  overflow: hidden;
+}
+.panel-toolbar {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.panel-toolbar form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+.panel-toolbar input,
+.panel-toolbar select {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  color: #0f172a;
+}
+.panel-toolbar input[type="search"] {
+  min-width: 180px;
+  flex: 1;
+  max-width: 240px;
+}
+.panel-toolbar input[type="date"] { min-width: 140px; }
+.btn-filter {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.btn-filter:hover { background: #f8fafc; }
+.table-wrap { overflow-x: auto; }
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th,
+.data-table td {
+  padding: 13px 16px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.data-table th {
+  background: #fafbfc;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: #fafbfc; }
+.muted { color: #94a3b8; }
+.status-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+}
+.status-text.scheduled { color: #4338ca; }
+.status-text.completed { color: #166534; }
+.status-text.cancelled { color: #991b1b; }
+.status-text.no_show { color: #b45309; }
+.status-select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: inherit;
+  background: #fff;
+  color: #0f172a;
+}
+.actions-cell {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  white-space: nowrap;
+}
+.btn-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4f46e5;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-link:hover { text-decoration: underline; }
+.btn-link.danger { color: #b91c1c; }
+.empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 36px 16px;
+  font-size: 13px;
+}
+.notes-cell {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #475569;
+}
+</style>
+</head>
 <body>
 <div class="app-layout">
-    {% set active = 'appointments' %}
-    {% include 'partials/admin_sidebar.html' %}
-    <main class="main-content">
-        <header class="top-bar">
-            <div>
-                <h1 class="page-title">Appointments</h1>
-                <p class="page-subtitle">All scheduled viewings and meetings</p>
-            </div>
-            <a href="{{ url_for('admin.admin_add_appointment') }}" class="btn-primary">Schedule Appointment</a>
-        </header>
-        <div class="panel full">
-            <div class="table-wrap">
-                <table>
-                    <thead><tr><th>ID</th><th>Client</th><th>Property</th><th>Agent</th><th>Date</th><th>Status</th><th>Notes</th></tr></thead>
-                    <tbody>
-                    {% for a in appointments %}
-                    <tr>
-                        <td>{{ a.id }}</td>
-                        <td>{{ a.client_name or '—' }}</td>
-                        <td>{{ a.property_title or '—' }}</td>
-                        <td>{{ a.agent_name or '—' }}</td>
-                        <td>{{ a.appointment_date or '—' }}</td>
-                        <td><span class="badge badge-{{ a.status }}">{{ a.status }}</span></td>
-                        <td>{{ a.notes or '—' }}</td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="7" class="empty">No appointments yet</td></tr>
+{% set active = 'appointments' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+  <header class="top-bar dash-top">
+    <div>
+      <h1 class="page-title">Appointments</h1>
+      <p class="page-subtitle">Viewings and meetings across the team</p>
+    </div>
+    <div class="top-actions">
+      <a href="{{ url_for('admin.admin_add_appointment') }}" class="btn-create">Schedule</a>
+    </div>
+  </header>
+
+  <div class="page-wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}" style="margin-bottom:14px">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="label">Total</div>
+        <div class="value">{{ stats.total }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Upcoming</div>
+        <div class="value">{{ stats.upcoming }}</div>
+      </div>
+      {% for st in statuses %}
+      <div class="stat-card">
+        <div class="label">{{ status_labels[st] }}</div>
+        <div class="value">{{ stats[st] }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-toolbar">
+        <form method="GET" action="{{ url_for('admin.admin_appointments') }}">
+          <input type="search" name="q" value="{{ q }}" placeholder="Search client, property, agent">
+          <select name="status">
+            <option value="">All statuses</option>
+            {% for s in statuses %}
+            <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ status_labels[s] }}</option>
+            {% endfor %}
+          </select>
+          <select name="agent_id">
+            <option value="">All agents</option>
+            {% for a in agents %}
+            <option value="{{ a.id }}" {% if agent_id == a.id|string %}selected{% endif %}>{{ a.full_name }}</option>
+            {% endfor %}
+          </select>
+          <input type="date" name="date_from" value="{{ date_from }}" title="From date">
+          <input type="date" name="date_to" value="{{ date_to }}" title="To date">
+          <button type="submit" class="btn-filter">Filter</button>
+          {% if q or status_filter or agent_id or date_from or date_to %}
+          <a href="{{ url_for('admin.admin_appointments') }}" class="btn-filter">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date and time</th>
+              <th>Client</th>
+              <th>Property</th>
+              <th>Agent</th>
+              <th>Status</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in appointments %}
+            <tr>
+              <td>{{ a.appointment_date or '' }}</td>
+              <td>{% if a.client_name %}{{ a.client_name }}{% else %}<span class="muted">None</span>{% endif %}</td>
+              <td>{% if a.property_title %}{{ a.property_title }}{% else %}<span class="muted">None</span>{% endif %}</td>
+              <td>{% if a.agent_name %}{{ a.agent_name }}{% else %}<span class="muted">Unassigned</span>{% endif %}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.admin_appointment_status', appointment_id=a.id) }}" style="margin:0">
+                  <select name="status" class="status-select" onchange="this.form.submit()">
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if a.status == s %}selected{% endif %}>{{ status_labels[s] }}</option>
                     {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
+                  </select>
+                </form>
+              </td>
+              <td class="notes-cell" title="{{ a.notes or '' }}">{% if a.notes %}{{ a.notes }}{% else %}<span class="muted">None</span>{% endif %}</td>
+              <td class="actions-cell">
+                <a class="btn-link" href="{{ url_for('admin.admin_edit_appointment', appointment_id=a.id) }}">Edit</a>
+                <form method="POST"
+                      action="{{ url_for('admin.admin_delete_appointment', appointment_id=a.id) }}"
+                      style="margin:0"
+                      onsubmit="return confirm('Remove this appointment?');">
+                  <button type="submit" class="btn-link danger">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" class="empty">No appointments match the current filters.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
 </div>
 </body>
 </html>

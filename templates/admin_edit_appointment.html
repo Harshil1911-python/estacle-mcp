@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Edit Appointment</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; }
+.top-bar.dash-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px 10px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dash-top .page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 2px;
+}
+.dash-top .page-subtitle { font-size: 13px; color: #64748b; margin: 0; }
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.page-wrap { padding: 12px 32px 32px; max-width: 720px; }
+.panel-card {
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 6px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  color: #0f172a;
+  box-sizing: border-box;
+}
+.form-group textarea {
+  height: 96px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.btn-primary {
+  height: 40px;
+  padding: 0 18px;
+  background: #0f172a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-primary:hover { background: #1e293b; }
+.btn-secondary {
+  height: 40px;
+  padding: 0 18px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+{% set active = 'appointments' %}
+{% include 'partials/admin_sidebar.html' %}
+<main class="main-content">
+  <header class="top-bar dash-top">
+    <div>
+      <h1 class="page-title">Edit Appointment</h1>
+      <p class="page-subtitle">Update schedule details</p>
+    </div>
+    <a href="{{ url_for('admin.admin_appointments') }}" class="btn-export">Back</a>
+  </header>
+
+  <div class="page-wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}" style="margin-bottom:14px">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="panel-card">
+      <form method="POST">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Client</label>
+            <select name="client_id">
+              <option value="">Select client</option>
+              {% for c in clients %}
+              <option value="{{ c.id }}" {% if appointment.client_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Property</label>
+            <select name="property_id">
+              <option value="">Select property</option>
+              {% for p in properties %}
+              <option value="{{ p.id }}" {% if appointment.property_id == p.id %}selected{% endif %}>{{ p.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Agent</label>
+            <select name="agent_id">
+              <option value="">Select agent</option>
+              {% for a in agents %}
+              <option value="{{ a.id }}" {% if appointment.agent_id == a.id %}selected{% endif %}>{{ a.full_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date and time</label>
+            <input type="datetime-local" name="appointment_date" value="{{ appointment.appointment_date_input }}" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status">
+            {% for s in statuses %}
+            <option value="{{ s }}" {% if appointment.status == s %}selected{% endif %}>{{ status_labels[s] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea name="notes">{{ appointment.notes or '' }}</textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Save changes</button>
+          <a href="{{ url_for('admin.admin_appointments') }}" class="btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+</div>
+</body>
+</html>

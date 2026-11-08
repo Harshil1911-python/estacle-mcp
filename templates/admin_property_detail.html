@@ -108,6 +108,8 @@
             <div class="top-actions">
                 <a href="{{ url_for('admin.admin_properties') }}" class="btn-pill">← Properties</a>
                 <a href="{{ url_for('admin.admin_edit_property', prop_id=prop.id) }}" class="btn-pill primary">Edit</a>
+                <button type="button" class="btn-pill" id="shareLinkBtn">Share link</button>
+                <button type="button" class="btn-pill" id="barcodeBtn">Barcode</button>
                 <form method="POST" action="{{ url_for('admin.admin_delete_property', prop_id=prop.id) }}" style="margin:0" onsubmit="return confirm('Delete this property permanently?');">
                     <button type="submit" class="btn-pill danger">Delete</button>
                 </form>
@@ -271,5 +273,48 @@ function closeMediaLightbox() {
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeMediaLightbox(); });
 </script>
 
+
+<div id="shareModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:120;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:22px;box-shadow:0 20px 50px rgba(15,23,42,0.2)">
+    <h3 style="margin:0 0 8px;font-size:16px;color:#0f172a">Live share link</h3>
+    <p style="margin:0 0 12px;font-size:13px;color:#64748b">Anyone with this link can view a public listing card.</p>
+    <input id="shareUrlInput" readonly style="width:100%;height:40px;padding:0 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;box-sizing:border-box;margin-bottom:12px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" id="copyShareBtn" class="btn-pill primary">Copy link</button>
+      <a id="openShareBtn" href="#" target="_blank" class="btn-pill">Open</a>
+      <button type="button" id="closeShareBtn" class="btn-pill">Close</button>
+    </div>
+    <div style="text-align:center;margin-top:18px">
+      <img id="shareQr" alt="QR code" style="width:180px;height:180px;border-radius:12px;border:1px solid #eef2f7">
+      <p style="font-size:12px;color:#94a3b8;margin:8px 0 0">Scan barcode to open listing</p>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var shareUrl = {{ (request.url_root + 'share/property/' + (prop.id|string))|tojson }};
+  var modal = document.getElementById('shareModal');
+  function openShare(focusQr) {
+    document.getElementById('shareUrlInput').value = shareUrl;
+    document.getElementById('openShareBtn').href = shareUrl;
+    document.getElementById('shareQr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(shareUrl);
+    modal.style.display = 'flex';
+  }
+  var sbtn = document.getElementById('shareLinkBtn');
+  var bbtn = document.getElementById('barcodeBtn');
+  if (sbtn) sbtn.addEventListener('click', function(){ openShare(false); });
+  if (bbtn) bbtn.addEventListener('click', function(){ openShare(true); });
+  document.getElementById('closeShareBtn').addEventListener('click', function(){ modal.style.display = 'none'; });
+  modal.addEventListener('click', function(e){ if (e.target === modal) modal.style.display = 'none'; });
+  document.getElementById('copyShareBtn').addEventListener('click', function(){
+    var inp = document.getElementById('shareUrlInput');
+    inp.select();
+    try { navigator.clipboard.writeText(shareUrl); } catch(e) { document.execCommand('copy'); }
+    this.textContent = 'Copied';
+    var self = this;
+    setTimeout(function(){ self.textContent = 'Copy link'; }, 1500);
+  });
+})();
+</script>
 </body>
 </html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | My Deals — Overall Summary</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important; background: transparent !important;
+  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap;
+}
+.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; letter-spacing: -0.02em; }
+.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
+.top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn-export {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  background: #fff; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.btn-export:hover { background: #f8fafc; }
+.page-wrap { padding: 12px 32px 28px; }
+.stat-row {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px;
+}
+@media (max-width: 1100px) { .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat-card.kpi-soft {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  padding: 14px 16px; text-decoration: none; display: block;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+}
+.kpi-soft .kpi-label { font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 6px; }
+.kpi-soft .kpi-value { font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.03em; }
+.panel-card {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04); overflow: hidden;
+}
+.panel-toolbar {
+  padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.panel-toolbar input, .panel-toolbar select {
+  height: 36px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 9px;
+  font-size: 13px; font-family: inherit; background: #fff; color: #0f172a;
+}
+.panel-toolbar input { min-width: 180px; flex: 1; max-width: 280px; }
+.btn-filter {
+  height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #e2e8f0;
+  background: #fff; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer;
+  font-family: inherit; text-decoration: none; display: inline-flex; align-items: center;
+}
+.table-wrap { overflow-x: auto; }
+table.summary-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.summary-table th, .summary-table td {
+  padding: 12px 14px; text-align: left; border-bottom: 1px solid #f1f5f9; vertical-align: middle;
+}
+.summary-table th {
+  background: #fafbfc; font-size: 11.5px; font-weight: 700; color: #64748b;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.summary-table tbody tr:hover { background: #f8fafc; }
+.stage-pill {
+  display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px;
+  border-radius: 999px; letter-spacing: 0.02em;
+}
+.stage-pill.offer { background: #eef2ff; color: #4338ca; }
+.stage-pill.negotiation { background: #fef3c7; color: #b45309; }
+.stage-pill.under_contract { background: #e0f2fe; color: #0369a1; }
+.stage-pill.closed { background: #dcfce7; color: #166534; }
+.stage-pill.lost { background: #fee2e2; color: #991b1b; }
+.stamp-closed {
+  display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #fff; background: #0f172a; padding: 3px 8px; border-radius: 2px;
+  margin-left: 6px; vertical-align: middle;
+}
+.btn-sm {
+  font-size: 12px; font-weight: 600; text-decoration: none; background: none; border: none;
+  cursor: pointer; font-family: inherit; padding: 0; color: #4f46e5;
+}
+.btn-sm.danger { color: #b91c1c; }
+.actions-cell { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.empty { text-align: center; color: #94a3b8; padding: 28px 14px; }
+.note-muted { font-size: 12px; color: #64748b; margin: 0 0 12px; }
+.sidebar-nav .nav-item { text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" data-shell="agent">
+    <div class="sidebar-header">
+      <div class="logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Estacle" class="sidebar-logo">
+        <span>Estacle</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('agent.agent_dashboard') }}" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="{{ url_for('agent.agent_properties') }}" class="nav-item"><span class="nav-icon">🏠</span> My Properties</a>
+      <a href="{{ url_for('agent.agent_deals') }}" class="nav-item"><span class="nav-icon">💰</span> My Deals</a>
+      <a href="{{ url_for('agent.agent_deals_summary') }}" class="nav-item active"><span class="nav-icon">📋</span> Overall Summary</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">{{ session.full_name[0] }}</div>
+        <div class="user-details">
+          <div class="user-name">{{ session.full_name }}</div>
+          <div class="user-role">Agent</div>
+        </div>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="top-bar dash-top">
+      <div>
+        <h1 class="page-title">Overall Summary</h1>
+        <p class="page-subtitle">Your deals · status · customer · property · remove your deal only</p>
+      </div>
+      <div class="top-actions">
+        <a href="{{ url_for('agent.agent_deals') }}" class="btn-export">My Deals</a>
+        <a href="{{ url_for('agent.agent_dashboard') }}" class="btn-export">Dashboard</a>
+      </div>
+    </header>
+
+    <div class="page-wrap">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" style="margin-bottom:12px">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="stat-row">
+        <div class="stat-card kpi-soft">
+          <div class="kpi-label">Total deals</div>
+          <div class="kpi-value">{{ stats.total }}</div>
+        </div>
+        {% for st in stages %}
+        <div class="stat-card kpi-soft">
+          <div class="kpi-label">{{ stage_labels[st] }}</div>
+          <div class="kpi-value">{{ stats[st] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <p class="note-muted">
+        Counts stay in sync with admin pipeline and analytics — only live records are counted.
+        Deleting a deal here removes only <strong>your</strong> deal (not the property). Cascade property delete is admin-only.
+      </p>
+
+      <div class="panel-card">
+        <div class="panel-toolbar">
+          <form method="GET" action="{{ url_for('agent.agent_deals_summary') }}" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%">
+            <input type="search" name="q" value="{{ q }}" placeholder="Search title, property, client…">
+            <select name="stage">
+              <option value="">All stages</option>
+              {% for s in stages %}
+              <option value="{{ s }}" {% if stage_filter==s %}selected{% endif %}>{{ stage_labels[s] }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn-filter">Filter</button>
+            {% if q or stage_filter %}
+            <a href="{{ url_for('agent.agent_deals_summary') }}" class="btn-filter">Clear</a>
+            {% endif %}
+          </form>
+        </div>
+        <div class="table-wrap">
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Deal</th>
+                <th>Status</th>
+                <th>Property</th>
+                <th>Customer</th>
+                <th>Value</th>
+                <th>Expected close</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in deals %}
+              <tr>
+                <td><strong>{{ d.title }}</strong></td>
+                <td>
+                  <span class="stage-pill {{ d.stage }}">{{ stage_labels.get(d.stage, d.stage) }}</span>
+                  {% if d.stage == 'closed' %}<span class="stamp-closed">Completed</span>{% endif %}
+                </td>
+                <td>{{ d.property_title or '—' }}</td>
+                <td>{{ d.client_name or '—' }}</td>
+                <td>{{ format_money(d.value or 0, currency) }}</td>
+                <td>{{ d.expected_close or '—' }}</td>
+                <td class="actions-cell">
+                  <form method="POST"
+                        action="{{ url_for('agent.agent_delete_deal', deal_id=d.id) }}"
+                        style="margin:0"
+                        onsubmit="return confirm('Remove this deal from your pipeline?\n\nDeal: {{ d.title|e }}\n\nProperty will remain in the CRM. Dashboard counts will update.');">
+                    <input type="hidden" name="next" value="summary">
+                    <button type="submit" class="btn-sm danger">Delete deal</button>
+                  </form>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" class="empty">No deals match your filters.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

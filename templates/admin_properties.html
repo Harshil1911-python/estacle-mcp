@@ -284,6 +284,7 @@
             </div>
             <div class="top-actions">
                 <a href="{{ url_for('admin.admin_export_properties') }}" class="btn-export">Export CSV</a>
+                <a href="#" id="headerCompareBtn" class="btn-towards-panel" style="display:none">Compare selected</a>
                 <a href="{{ url_for('admin.admin_add_property') }}" class="btn-create">+ Add Property</a>
                 <a href="{{ url_for('admin.admin_display_properties') }}" class="btn-export">Display board</a>
             </div>
@@ -515,6 +516,7 @@
                 <form method="POST" action="{{ url_for('admin.admin_bulk_properties') }}" id="bulkForm">
                     <div class="bulk-bar" id="bulkBar">
                         <span class="bulk-count"><span id="bulkCount">0</span> selected</span>
+                        <button type="button" id="bulkCompareBtn" style="display:none;background:#0f172a;color:#fff;border-color:#0f172a">Compare</button>
                         <select name="action" id="bulkAction">
                             <option value="">Bulk action…</option>
                             <option value="delete">Delete selected</option>
@@ -641,13 +643,38 @@ function confirmBulk() {
   function checks() {
     return Array.prototype.slice.call(document.querySelectorAll('.row-check'));
   }
+  function selectedIds() {
+    return checks().filter(function(c){ return c.checked; }).map(function(c){ return c.value; });
+  }
+  function goCompare() {
+    var ids = selectedIds();
+    if (ids.length < 2 || ids.length > 4) {
+      alert('Select 2 to 4 properties to compare');
+      return;
+    }
+    var q = ids.map(function(id){ return 'ids=' + encodeURIComponent(id); }).join('&');
+    window.location.href = '{{ url_for("admin.admin_compare") }}?' + q;
+  }
   function refresh() {
     var list = checks();
     var n = list.filter(function(c) { return c.checked; }).length;
     if (countEl) countEl.textContent = n;
     if (bar) bar.classList.toggle('show', n > 0);
     if (selectAll) selectAll.checked = list.length > 0 && n === list.length;
+    var canCompare = n >= 2 && n <= 4;
+    var bulkCmp = document.getElementById('bulkCompareBtn');
+    var headCmp = document.getElementById('headerCompareBtn');
+    if (bulkCmp) {
+      bulkCmp.style.display = canCompare ? 'inline-flex' : 'none';
+    }
+    if (headCmp) {
+      headCmp.style.display = canCompare ? 'inline-flex' : 'none';
+    }
   }
+  var bulkCmpBtn = document.getElementById('bulkCompareBtn');
+  if (bulkCmpBtn) bulkCmpBtn.addEventListener('click', goCompare);
+  var headCmpBtn = document.getElementById('headerCompareBtn');
+  if (headCmpBtn) headCmpBtn.addEventListener('click', function(e){ e.preventDefault(); goCompare(); });
   if (selectAll) selectAll.addEventListener('change', function() {
     checks().forEach(function(c) { c.checked = selectAll.checked; });
     refresh();

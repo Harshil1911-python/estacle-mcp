@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ prop.title }} · Estacle</title>
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(160deg, #fff7ed 0%, #f8fafc 40%, #eef2ff 100%);
+    min-height: 100vh; color: #0f172a; padding: 24px 16px 48px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  .brand {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+    justify-content: center;
+  }
+  .brand img { height: 28px; width: auto; }
+  .brand span { font-weight: 700; font-size: 14px; color: #64748b; letter-spacing: 0.02em; }
+  .card {
+    background: #fff; border-radius: 20px; overflow: hidden;
+    box-shadow: 0 20px 50px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04);
+    border: 1px solid #e8ecf1;
+  }
+  .hero {
+    height: 260px; background: #e2e8f0 center/cover no-repeat; position: relative;
+  }
+  .hero .badge {
+    position: absolute; top: 14px; left: 14px; background: rgba(15,23,42,0.82);
+    color: #fff; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .body { padding: 22px 22px 26px; }
+  h1 { font-size: 24px; font-weight: 750; letter-spacing: -0.03em; margin-bottom: 6px; }
+  .price { font-size: 22px; font-weight: 700; color: #ea580c; margin-bottom: 14px; }
+  .meta {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;
+  }
+  .meta div {
+    background: #f8fafc; border: 1px solid #eef2f7; border-radius: 12px; padding: 12px;
+    text-align: center;
+  }
+  .meta .k { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .meta .v { font-size: 16px; font-weight: 700; color: #0f172a; margin-top: 4px; }
+  .loc { font-size: 14px; color: #475569; margin-bottom: 14px; line-height: 1.45; }
+  .desc { font-size: 14px; color: #334155; line-height: 1.6; white-space: pre-wrap; }
+  .thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 0 22px 18px; }
+  .thumbs img {
+    width: 88px; height: 64px; object-fit: cover; border-radius: 10px; border: 1px solid #e8ecf1; flex-shrink: 0;
+  }
+  .agent {
+    margin-top: 18px; padding-top: 16px; border-top: 1px solid #f1f5f9;
+    font-size: 13px; color: #64748b;
+  }
+  .footer {
+    text-align: center; margin-top: 18px; font-size: 12px; color: #94a3b8;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <img src="/static/images/logo.png" alt="Estacle" onerror="this.style.display='none'">
+      <span>Estacle listing</span>
+    </div>
+    <div class="card">
+      {% set cover = photos[0] if photos else None %}
+      <div class="hero" {% if cover %}style="background-image:url('/static/uploads/properties/{{ cover }}')"{% endif %}>
+        <span class="badge">{{ prop.status or 'listing' }} · {{ prop.listing_type or 'sale' }}</span>
+      </div>
+      {% if photos|length > 1 %}
+      <div class="thumbs">
+        {% for ph in photos[:8] %}
+        <img src="/static/uploads/properties/{{ ph }}" alt="">
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="body">
+        <h1>{{ prop.title }}</h1>
+        <div class="price">{{ format_money(prop.price or 0, currency) }}</div>
+        <div class="meta">
+          <div><div class="k">Beds</div><div class="v">{{ prop.bedrooms or '—' }}</div></div>
+          <div><div class="k">Baths</div><div class="v">{{ prop.bathrooms or '—' }}</div></div>
+          <div><div class="k">Area</div><div class="v">{% if prop.area_sqft %}{{ prop.area_sqft }} sqft{% else %}—{% endif %}</div></div>
+        </div>
+        <div class="loc">
+          {% if prop.address %}{{ prop.address }}{% endif %}
+          {% if prop.city %}{% if prop.address %}, {% endif %}{{ prop.city }}{% endif %}
+          {% if prop.state %}{% if prop.city or prop.address %}, {% endif %}{{ prop.state }}{% endif %}
+        </div>
+        {% if prop.description %}
+        <div class="desc">{{ prop.description }}</div>
+        {% endif %}
+        {% if prop.agent_name %}
+        <div class="agent">Listed with {{ prop.agent_name }}</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="footer">Shared via Estacle · powered by Serenia AI</div>
+  </div>
+</body>
+</html>
