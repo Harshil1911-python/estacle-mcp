@@ -1,7 +1,7 @@
 """Admin appointments: list, schedule, edit, status, delete."""
 
 from flask import (
-    render_template, request, redirect, url_for, session, flash,
+    render_template, request, redirect, url_for, session, flash, jsonify,
 )
 from datetime import datetime
 
@@ -117,23 +117,42 @@ def admin_appointments():
         1 for r in all_rows
         if r['status'] == 'scheduled' and (r.get('appointment_date') or '')[:10] >= today
     )
+    completed_pct = 0
+    if stats['total']:
+        completed_pct = round(100.0 * stats.get('completed', 0) / stats['total'])
+    no_show_pct = 0
+    if stats['total']:
+        no_show_pct = round(100.0 * stats.get('no_show', 0) / stats['total'])
+    stats['completed_pct'] = completed_pct
+    stats['no_show_pct'] = no_show_pct
 
     agents = db.execute(
         "SELECT id, full_name FROM users WHERE role IN ('agent','admin') AND is_active = 1 ORDER BY full_name"
     ).fetchall()
+    clients, properties, agents_list = _form_lists(db)
+
+    # Serialize for calendar JS (dd/mm/yy display handled client-side)
+    import json
+    appt_json = json.dumps(all_rows, default=str)
+
+    toast = request.args.get('toast', '').strip()
 
     return render_template(
         'admin_appointments.html',
         appointments=rows,
+        all_appointments_json=appt_json,
         stats=stats,
         statuses=STATUSES,
         status_labels=STATUS_LABELS,
         agents=agents,
+        clients=clients,
+        properties=properties,
         q=q,
         status_filter=status,
         agent_id=agent_id,
         date_from=date_from,
         date_to=date_to,
+        toast=toast,
     )
 
 
@@ -150,6 +169,11 @@ def admin_add_appointment():
         property_id = request.form.get('property_id') or None
         agent_id = request.form.get('agent_id') or None
         appointment_date = request.form.get('appointment_date', '').strip()
+        if not appointment_date:
+            appt_date = (request.form.get('appt_date') or '').strip()
+            appt_time = (request.form.get('appt_time') or '10:00').strip()
+            if appt_date:
+                appointment_date = appt_date + 'T' + appt_time
         notes = request.form.get('notes', '').strip()
         status = _normalize_status(request.form.get('status', 'scheduled'))
 
@@ -168,8 +192,7 @@ def admin_add_appointment():
         )
         db.commit()
         log_activity('Scheduled appointment', 'appointment', cur.lastrowid, appointment_date)
-        flash('Appointment scheduled.', 'success')
-        return redirect(url_for('admin.admin_appointments'))
+        return redirect(url_for('admin.admin_appointments', toast='Updated'))
 
     return render_template(
         'admin_add_appointment.html',
@@ -219,8 +242,7 @@ def admin_edit_appointment(appointment_id):
         )
         db.commit()
         log_activity('Updated appointment', 'appointment', appointment_id, appointment_date)
-        flash('Appointment updated.', 'success')
-        return redirect(url_for('admin.admin_appointments'))
+        return redirect(url_for('admin.admin_appointments', toast='Updated'))
 
     appt = dict(row)
     # datetime-local needs YYYY-MM-DDTHH:MM
@@ -247,6 +269,36 @@ def admin_appointment_status(appointment_id):
     db = get_db()
     migrate_db()
     status = _normalize_status(request.form.get('status'))
+    minutes = (request.form.get('minutes_of_meeting') or '').strip()
+    row = db.execute(
+        'SELECT id FROM appointments WHERE id = ?', (appointment_id,)
+    ).fetchone()
+    if not row:
+        flash('Appointment not found.', 'warning')
+        return redirect(url_for('admin.admin_appointments'))
+    if status == 'completed' and minutes:
+        db.execute(
+            'UPDATE appointments SET status = ?, minutes_of_meeting = ? WHERE id = ?',
+            (status, minutes, appointment_id),
+        )
+    else:
+        db.execute(
+            'UPDATE appointments SET status = ? WHERE id = ?',
+            (status, appointment_id),
+        )
+    db.commit()
+    log_activity('Appointment status ' + status, 'appointment', appointment_id, status)
+    return redirect(url_for('admin.admin_appointments', toast='Updated'))
+
+
+@admin.route('/admin/appointments/<int:appointment_id>/minutes', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_appointment_minutes(appointment_id):
+    """Save Minutes of Meeting and mark appointment completed."""
+    db = get_db()
+    migrate_db()
+    minutes = (request.form.get('minutes_of_meeting') or '').strip()
     row = db.execute(
         'SELECT id FROM appointments WHERE id = ?', (appointment_id,)
     ).fetchone()
@@ -254,13 +306,12 @@ def admin_appointment_status(appointment_id):
         flash('Appointment not found.', 'warning')
         return redirect(url_for('admin.admin_appointments'))
     db.execute(
-        'UPDATE appointments SET status = ? WHERE id = ?',
-        (status, appointment_id),
+        'UPDATE appointments SET status = ?, minutes_of_meeting = ? WHERE id = ?',
+        ('completed', minutes, appointment_id),
     )
     db.commit()
-    log_activity('Appointment status ' + status, 'appointment', appointment_id, status)
-    flash('Status updated.', 'success')
-    return redirect(url_for('admin.admin_appointments'))
+    log_activity('Minutes of meeting saved', 'appointment', appointment_id, 'completed')
+    return redirect(url_for('admin.admin_appointments', toast='Updated'))
 
 
 @admin.route('/admin/appointments/<int:appointment_id>/delete', methods=['POST'])
@@ -279,5 +330,31 @@ def admin_delete_appointment(appointment_id):
     db.execute('DELETE FROM appointments WHERE id = ?', (appointment_id,))
     db.commit()
     log_activity('Deleted appointment', 'appointment', appointment_id, row['appointment_date'])
-    flash('Appointment removed.', 'success')
-    return redirect(url_for('admin.admin_appointments'))
+    return redirect(url_for('admin.admin_appointments', toast='Updated'))
+
+
+@admin.route('/admin/appointments/<int:appointment_id>/reschedule', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_appointment_reschedule(appointment_id):
+    """Move appointment to a new date/time (drag and drop)."""
+    db = get_db()
+    migrate_db()
+    data = request.get_json(silent=True) or {}
+    new_dt = (data.get('appointment_date') or request.form.get('appointment_date') or '').strip()
+    if not new_dt:
+        return jsonify({'ok': False, 'error': 'appointment_date required'}), 400
+    row = db.execute('SELECT id FROM appointments WHERE id = ?', (appointment_id,)).fetchone()
+    if not row:
+        return jsonify({'ok': False, 'error': 'not found'}), 404
+    # Normalize T separator
+    new_dt = new_dt.replace(' ', 'T')
+    if len(new_dt) == 16:
+        new_dt = new_dt + ':00'
+    db.execute(
+        'UPDATE appointments SET appointment_date = ? WHERE id = ?',
+        (new_dt, appointment_id),
+    )
+    db.commit()
+    log_activity('Rescheduled appointment', 'appointment', appointment_id, new_dt)
+    return jsonify({'ok': True, 'appointment_date': new_dt})

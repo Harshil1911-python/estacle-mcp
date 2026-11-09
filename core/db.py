@@ -322,6 +322,15 @@ def migrate_db():
             FOREIGN KEY (created_by) REFERENCES users (id)
         )
     """)
+
+    # Appointment minutes of meeting
+    apcols = {r[1] for r in db.execute('PRAGMA table_info(appointments)').fetchall()}
+    if 'minutes_of_meeting' not in apcols:
+        try:
+            db.execute('ALTER TABLE appointments ADD COLUMN minutes_of_meeting TEXT')
+        except Exception:
+            pass
+
     db.execute("""
         CREATE TABLE IF NOT EXISTS deal_payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

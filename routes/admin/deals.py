@@ -412,16 +412,17 @@ def admin_delete_deal(deal_id):
             deal_id,
             title + (f' / property: {prop_title}' if prop_title else ''),
         )
+        pass
+    next_url = request.form.get('next') or request.args.get('next') or ''
+    if next_url == 'summary':
+        return redirect(url_for('admin.admin_deals_summary', toast='Updated'))
+    if title:
         if prop_title:
             flash(f'Deal and property “{prop_title}” removed. Live stats & agent views updated.', 'success')
         else:
             flash('Deal deleted.', 'success')
     else:
         flash('Deal not found.', 'warning')
-
-    next_url = request.form.get('next') or request.args.get('next') or ''
-    if next_url == 'summary':
-        return redirect(url_for('admin.admin_deals_summary'))
     return redirect(url_for('admin.admin_deals'))
 
 
@@ -429,7 +430,12 @@ def admin_delete_deal(deal_id):
 @login_required
 @role_required('admin')
 def admin_deals_summary():
-    """Overall Summary — every deal with status, agent, customer, and cascade delete."""
+    """Overall Summary — every deal with status, agent, customer, and cascade delete.
+
+    Status rules for display:
+    - closed: customer has paid the full property/deal value
+    - completed: customer has paid full property value AND full brokerage
+    """
     db = get_db()
     migrate_db()
     q = request.args.get('q', '').strip()
@@ -440,11 +446,50 @@ def admin_deals_summary():
             stage_filter = ''
 
     rows = _deals_query(db, q=q, agent_id='', stage_filter=stage_filter)
+
+    # Attach payment and brokerage totals for closed / completed classification
+    for r in rows:
+        deal_id = r['id']
+        paid = db.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM deal_payments WHERE deal_id = ?",
+            (deal_id,),
+        ).fetchone()[0]
+        brokerage_received = db.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM deal_brokerage_payments WHERE deal_id = ?",
+            (deal_id,),
+        ).fetchone()[0]
+        value = float(r.get('value') or 0)
+        try:
+            brokerage_due = (value * float(r.get('commission_rate') or 0)) / 100.0
+        except Exception:
+            brokerage_due = 0.0
+        paid = float(paid or 0)
+        brokerage_received = float(brokerage_received or 0)
+        r['customer_paid'] = paid
+        r['brokerage_received'] = brokerage_received
+        r['brokerage_due'] = brokerage_due
+        r['customer_balance'] = max(value - paid, 0)
+        r['brokerage_balance'] = max(brokerage_due - brokerage_received, 0)
+        fully_paid = value <= 0 or paid >= value - 0.01
+        fully_brokerage = brokerage_due <= 0 or brokerage_received >= brokerage_due - 0.01
+        # Display status: Closed when property fully paid; Completed when both paid
+        if fully_paid and fully_brokerage:
+            r['summary_status'] = 'completed'
+            r['summary_status_label'] = 'Completed'
+        elif fully_paid or r['stage'] == 'closed':
+            r['summary_status'] = 'closed'
+            r['summary_status_label'] = 'Closed'
+        else:
+            r['summary_status'] = r['stage']
+            r['summary_status_label'] = STAGE_LABELS.get(r['stage'], r['stage'])
+
     stats = {st: sum(1 for r in rows if r['stage'] == st) for st in STAGES}
     stats['total'] = len(rows)
-    stats['closed_or_completed'] = stats.get('closed', 0)
+    stats['closed'] = sum(1 for r in rows if r.get('summary_status') == 'closed')
+    stats['completed'] = sum(1 for r in rows if r.get('summary_status') == 'completed')
     currency = get_setting('currency', 'INR')
 
+    toast = request.args.get('toast', '').strip()
     return render_template(
         'admin_deals_summary.html',
         deals=rows,
@@ -455,6 +500,7 @@ def admin_deals_summary():
         stage_filter=stage_filter,
         currency=currency,
         format_money=format_money,
+        toast=toast,
     )
 
 
@@ -480,10 +526,39 @@ def admin_deal_detail(deal_id):
         return redirect(url_for('admin.admin_deals'))
     deal = dict(row)
     deal['stage'] = _normalize_stage(deal.get('stage'))
+    value = float(deal.get('value') or 0)
     try:
-        deal['commission_amount'] = (float(deal.get('value') or 0) * float(deal.get('commission_rate') or 0)) / 100.0
+        deal['commission_amount'] = (value * float(deal.get('commission_rate') or 0)) / 100.0
     except Exception:
         deal['commission_amount'] = 0
+    customer_paid = float(db.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM deal_payments WHERE deal_id = ?",
+        (deal_id,),
+    ).fetchone()[0] or 0)
+    brokerage_received = float(db.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM deal_brokerage_payments WHERE deal_id = ?",
+        (deal_id,),
+    ).fetchone()[0] or 0)
+    brokerage_due = float(deal['commission_amount'] or 0)
+    fully_paid = value <= 0 or customer_paid >= value - 0.01
+    fully_brokerage = brokerage_due <= 0 or brokerage_received >= brokerage_due - 0.01
+    if fully_paid and fully_brokerage:
+        summary_status = 'completed'
+        summary_status_label = 'Completed'
+    elif fully_paid or deal['stage'] == 'closed':
+        summary_status = 'closed'
+        summary_status_label = 'Closed'
+    else:
+        summary_status = deal['stage']
+        summary_status_label = STAGE_LABELS.get(deal['stage'], deal['stage'])
+    payments = [dict(p) for p in db.execute(
+        "SELECT * FROM deal_payments WHERE deal_id = ? ORDER BY COALESCE(payment_date, created_at) DESC, id DESC",
+        (deal_id,),
+    ).fetchall()]
+    brokerage_payments = [dict(p) for p in db.execute(
+        "SELECT * FROM deal_brokerage_payments WHERE deal_id = ? ORDER BY COALESCE(payment_date, created_at) DESC, id DESC",
+        (deal_id,),
+    ).fetchall()]
     currency = get_setting('currency', 'INR')
     return render_template(
         'admin_deal_detail.html',
@@ -492,6 +567,17 @@ def admin_deal_detail(deal_id):
         stage_labels=STAGE_LABELS,
         currency=currency,
         format_money=format_money,
+        customer_paid=customer_paid,
+        customer_balance=max(value - customer_paid, 0),
+        customer_pct=round(100.0 * customer_paid / value, 1) if value > 0 else 0,
+        brokerage_due=brokerage_due,
+        brokerage_received=brokerage_received,
+        brokerage_balance=max(brokerage_due - brokerage_received, 0),
+        brokerage_pct=round(100.0 * brokerage_received / brokerage_due, 1) if brokerage_due > 0 else 0,
+        summary_status=summary_status,
+        summary_status_label=summary_status_label,
+        payments=payments,
+        brokerage_payments=brokerage_payments,
     )
 
 

@@ -819,3 +819,129 @@ def get_property_inventory_report(user: dict) -> dict:
             "SELECT COALESCE(SUM(price),0) FROM properties WHERE lower(IFNULL(status,'')) NOT IN ('sold','rented')"
         ).fetchone()[0]
     return {"ok": True, "by_status": by_status, "by_city": by_city, "active_inventory_value": inventory_value}
+
+
+def add_appointment(
+    user: dict,
+    appointment_date: str,
+    client_id: int = None,
+    property_id: int = None,
+    agent_id: int = None,
+    status: str = "scheduled",
+    notes: str = None,
+) -> dict:
+    """Create an appointment. appointment_date: ISO-like YYYY-MM-DDTHH:MM or YYYY-MM-DD HH:MM."""
+    require_staff(user)
+    appointment_date = (appointment_date or "").strip().replace(" ", "T")
+    if not appointment_date:
+        raise ValueError("appointment_date is required")
+    status = (status or "scheduled").strip().lower().replace(" ", "_")
+    if status not in ("scheduled", "completed", "cancelled", "no_show"):
+        status = "scheduled"
+    if agent_id is None and user.get("role") == "agent":
+        agent_id = user.get("id")
+    with db_conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO appointments
+               (client_id, property_id, agent_id, appointment_date, status, notes)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (client_id, property_id, agent_id, appointment_date, status, notes),
+        )
+        aid = cur.lastrowid
+        conn.commit()
+        row = conn.execute(
+            """SELECT a.*, c.full_name as client_name, p.title as property_title, u.full_name as agent_name
+               FROM appointments a
+               LEFT JOIN clients c ON a.client_id = c.id
+               LEFT JOIN properties p ON a.property_id = p.id
+               LEFT JOIN users u ON a.agent_id = u.id
+               WHERE a.id = ?""",
+            (aid,),
+        ).fetchone()
+    return {"ok": True, "appointment": dict(row) if row else {"id": aid}}
+
+
+def search_appointments(
+    user: dict,
+    q: str = None,
+    status: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    limit: int = 50,
+) -> dict:
+    require_staff(user)
+    sql = (
+        "SELECT a.*, c.full_name as client_name, p.title as property_title, u.full_name as agent_name "
+        "FROM appointments a "
+        "LEFT JOIN clients c ON a.client_id = c.id "
+        "LEFT JOIN properties p ON a.property_id = p.id "
+        "LEFT JOIN users u ON a.agent_id = u.id WHERE 1=1"
+    )
+    params = []
+    if q:
+        sql += (
+            " AND (IFNULL(c.full_name,'') LIKE ? OR IFNULL(p.title,'') LIKE ? "
+            "OR IFNULL(u.full_name,'') LIKE ? OR IFNULL(a.notes,'') LIKE ?)"
+        )
+        qq = "%" + q + "%"
+        params.extend([qq, qq, qq, qq])
+    if status:
+        sql += " AND lower(IFNULL(a.status,'')) = ?"
+        params.append(status.strip().lower())
+    if date_from:
+        sql += " AND date(a.appointment_date) >= date(?)"
+        params.append(date_from)
+    if date_to:
+        sql += " AND date(a.appointment_date) <= date(?)"
+        params.append(date_to)
+    scope, sp = agent_scope_clause(user, "a.agent_id")
+    if scope:
+        sql += " AND " + scope
+        params.extend(sp)
+    sql += " ORDER BY a.appointment_date DESC LIMIT ?"
+    params.append(int(limit or 50))
+    with db_conn() as conn:
+        rows = _rows(conn.execute(sql, params))
+    return {"ok": True, "count": len(rows), "appointments": rows}
+
+
+def get_appointment_details(user: dict, appointment_id: int) -> dict:
+    require_staff(user)
+    with db_conn() as conn:
+        row = conn.execute(
+            """SELECT a.*, c.full_name as client_name, p.title as property_title, u.full_name as agent_name
+               FROM appointments a
+               LEFT JOIN clients c ON a.client_id = c.id
+               LEFT JOIN properties p ON a.property_id = p.id
+               LEFT JOIN users u ON a.agent_id = u.id
+               WHERE a.id = ?""",
+            (appointment_id,),
+        ).fetchone()
+    if not row:
+        raise ValueError("Appointment not found")
+    return {"ok": True, "appointment": dict(row)}
+
+
+def update_appointment_status(
+    user: dict,
+    appointment_id: int,
+    status: str,
+    minutes_of_meeting: str = None,
+) -> dict:
+    require_staff(user)
+    status = (status or "").strip().lower().replace(" ", "_")
+    if status not in ("scheduled", "completed", "cancelled", "no_show"):
+        raise ValueError("Invalid status")
+    with db_conn() as conn:
+        if status == "completed" and minutes_of_meeting is not None:
+            conn.execute(
+                "UPDATE appointments SET status = ?, minutes_of_meeting = ? WHERE id = ?",
+                (status, minutes_of_meeting, appointment_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE appointments SET status = ? WHERE id = ?",
+                (status, appointment_id),
+            )
+        conn.commit()
+    return {"ok": True, "id": appointment_id, "status": status}
