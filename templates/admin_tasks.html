@@ -1,49 +1,227 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Estacle | Admin – Tasks</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacle | Tasks</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.main-content { background: transparent !important; }
+.top-bar.dash-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px 10px !important; background: transparent !important;
+  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap;
+}
+.dash-top .page-title {
+  font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 2px; letter-spacing: -0.02em;
+}
+.dash-top .page-subtitle { font-size: 13px; color: #64748b; margin: 0; }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.btn-create {
+  display: inline-flex; align-items: center; height: 36px; padding: 0 16px;
+  background: #0f172a; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600;
+  text-decoration: none; border: none;
+}
+.btn-create:hover { background: #1e293b; color: #fff; }
+.page-wrap { padding: 8px 32px 32px; }
+.stat-row {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px;
+}
+@media (max-width: 1000px) { .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat-card {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px; padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.stat-card .label { font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 6px; }
+.stat-card .value { font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.03em; }
+.panel-card {
+  background: #fff; border: 1px solid #e8ecf1; border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03); overflow: hidden;
+}
+.panel-toolbar {
+  padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+}
+.panel-toolbar form {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; width: 100%;
+}
+.panel-toolbar input,
+.panel-toolbar select {
+  height: 36px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 8px;
+  font-size: 13px; font-family: inherit; background: #fff; color: #0f172a;
+}
+.panel-toolbar input[type="search"] { min-width: 200px; flex: 1; max-width: 280px; }
+.btn-filter {
+  height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #e2e8f0;
+  background: #fff; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer;
+  font-family: inherit; text-decoration: none; display: inline-flex; align-items: center;
+}
+.btn-filter:hover { background: #f8fafc; }
+.table-wrap { overflow-x: auto; }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th, .data-table td {
+  padding: 13px 16px; text-align: left; border-bottom: 1px solid #f1f5f9; vertical-align: middle;
+}
+.data-table th {
+  background: #fafbfc; font-size: 11px; font-weight: 600; color: #64748b;
+  text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: #fafbfc; }
+.muted { color: #94a3b8; }
+.title-cell { font-weight: 600; color: #0f172a; }
+.prio {
+  display: inline-block; font-size: 12px; font-weight: 600; text-transform: capitalize; color: #334155;
+}
+.prio.high, .prio.urgent { color: #b91c1c; }
+.prio.medium { color: #b45309; }
+.prio.low { color: #64748b; }
+.status-select {
+  height: 32px; padding: 0 8px; border: 1px solid #e2e8f0; border-radius: 8px;
+  font-size: 12px; font-family: inherit; background: #fff; color: #0f172a;
+}
+.btn-link {
+  font-size: 13px; font-weight: 500; color: #4f46e5; text-decoration: none;
+  background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
+}
+.btn-link:hover { text-decoration: underline; }
+.btn-link.danger { color: #b91c1c; }
+.empty { text-align: center; color: #94a3b8; padding: 36px 16px; font-size: 13px; }
+.toast {
+  position: fixed; top: 20px; right: 20px; z-index: 2000;
+  background: #0f172a; color: #fff; padding: 12px 18px; border-radius: 10px;
+  font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(15,23,42,0.2);
+  opacity: 0; transform: translateY(-8px); transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
 </head>
 <body>
 <div class="app-layout">
 {% set active = 'tasks' %}
 {% include 'partials/admin_sidebar.html' %}
 <main class="main-content">
-<header class="top-bar">
-<div><h1 class="page-title">Tasks</h1><p class="page-subtitle">Follow-ups and to-dos</p></div>
-<a href="{{ url_for('admin.admin_add_task') }}" class="btn-primary">Add Task</a>
-</header>
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-{% endwith %}
+  <header class="top-bar dash-top">
+    <div>
+      <h1 class="page-title">Tasks</h1>
+      <p class="page-subtitle">Follow-ups and team to-dos</p>
+    </div>
+    <div class="top-actions">
+      <a href="{{ url_for('admin.admin_add_task') }}" class="btn-create">Add task</a>
+    </div>
+  </header>
 
-<div class="panel full"><div class="table-wrap"><table>
-<thead><tr><th>Title</th><th>Assignee</th><th>Due</th><th>Priority</th><th>Status</th><th>Client</th><th>Property</th><th>Action</th></tr></thead>
-<tbody>
-{% for t in tasks %}
-<tr>
-<td>{{ t.title }}</td>
-<td>{{ t.assignee_name or '—' }}</td>
-<td>{{ t.due_date or '—' }}</td>
-<td><span class="badge badge-{{ t.priority }}">{{ t.priority }}</span></td>
-<td>
-<form method="POST" action="{{ url_for('admin.admin_task_status', task_id=t.id) }}" style="display:inline">
-<select name="status" class="status-select" onchange="this.form.submit()">
-<option value="pending" {% if t.status=='pending' %}selected{% endif %}>Pending</option>
-<option value="in_progress" {% if t.status=='in_progress' %}selected{% endif %}>In progress</option>
-<option value="done" {% if t.status=='done' %}selected{% endif %}>Done</option>
-<option value="cancelled" {% if t.status=='cancelled' %}selected{% endif %}>Cancelled</option>
-</select></form>
-</td>
-<td>{{ t.client_name or '—' }}</td>
-<td>{{ t.property_title or '—' }}</td>
-<td><form method="POST" action="{{ url_for('admin.admin_delete_task', task_id=t.id) }}" style="display:inline" onsubmit="return confirm('Delete?')"><button class="btn-sm btn-danger" type="submit">Delete</button></form></td>
-</tr>
-{% else %}<tr><td colspan="8" class="empty">No tasks yet</td></tr>{% endfor %}
-</tbody></table></div></div>
+  <div class="page-wrap">
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="label">Total</div>
+        <div class="value">{{ stats.total }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Pending</div>
+        <div class="value">{{ stats.pending }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">In progress</div>
+        <div class="value">{{ stats.in_progress }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Done</div>
+        <div class="value">{{ stats.done }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">High priority</div>
+        <div class="value">{{ stats.high }}</div>
+      </div>
+    </div>
 
+    <div class="panel-card">
+      <div class="panel-toolbar">
+        <form method="GET" action="{{ url_for('admin.admin_tasks') }}">
+          <input type="search" name="q" value="{{ q }}" placeholder="Search tasks, assignee">
+          <select name="status">
+            <option value="">All statuses</option>
+            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In progress</option>
+            <option value="done" {% if status_filter == 'done' %}selected{% endif %}>Done</option>
+            <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+          </select>
+          <select name="priority">
+            <option value="">All priorities</option>
+            <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
+            <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
+            <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+            <option value="urgent" {% if priority_filter == 'urgent' %}selected{% endif %}>Urgent</option>
+          </select>
+          <button type="submit" class="btn-filter">Filter</button>
+          {% if q or status_filter or priority_filter %}
+          <a href="{{ url_for('admin.admin_tasks') }}" class="btn-filter">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Assignee</th>
+              <th>Due</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Client</th>
+              <th>Property</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tasks %}
+            <tr>
+              <td class="title-cell">{{ t.title }}</td>
+              <td>{% if t.assignee_name %}{{ t.assignee_name }}{% else %}<span class="muted">Unassigned</span>{% endif %}</td>
+              <td>{% if t.due_date %}{{ t.due_date }}{% else %}<span class="muted">None</span>{% endif %}</td>
+              <td><span class="prio {{ t.priority }}">{{ t.priority or 'medium' }}</span></td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.admin_task_status', task_id=t.id) }}" style="margin:0">
+                  <select name="status" class="status-select" onchange="this.form.submit()">
+                    <option value="pending" {% if t.status == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="in_progress" {% if t.status == 'in_progress' %}selected{% endif %}>In progress</option>
+                    <option value="done" {% if t.status == 'done' %}selected{% endif %}>Done</option>
+                    <option value="cancelled" {% if t.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                  </select>
+                </form>
+              </td>
+              <td>{% if t.client_name %}{{ t.client_name }}{% else %}<span class="muted">None</span>{% endif %}</td>
+              <td>{% if t.property_title %}{{ t.property_title }}{% else %}<span class="muted">None</span>{% endif %}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.admin_delete_task', task_id=t.id) }}" style="margin:0" onsubmit="return confirm('Remove this task?');">
+                  <button type="submit" class="btn-link danger">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="empty">No tasks match the current filters.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </main>
 </div>
+
+<div class="toast" id="toast">Updated</div>
+<script>
+{% if toast %}
+(function(){
+  var el = document.getElementById('toast');
+  el.textContent = {{ toast|tojson }};
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 2200);
+})();
+{% endif %}
+</script>
 </body>
 </html>

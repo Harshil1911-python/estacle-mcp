@@ -500,6 +500,71 @@ def get_property_inventory_report() -> str:
         return _err(e)
 
 
+@mcp.tool()
+def add_appointment(
+    appointment_date: str,
+    client_id: Optional[int] = None,
+    property_id: Optional[int] = None,
+    agent_id: Optional[int] = None,
+    status: Optional[str] = "scheduled",
+    notes: Optional[str] = None,
+) -> str:
+    """Schedule an appointment. appointment_date format: YYYY-MM-DDTHH:MM (e.g. 2026-11-10T14:30)."""
+    try:
+        return _ok(crm.add_appointment(
+            get_user(),
+            appointment_date=appointment_date,
+            client_id=client_id,
+            property_id=property_id,
+            agent_id=agent_id,
+            status=status or "scheduled",
+            notes=notes,
+        ))
+    except Exception as e:
+        return _err(e)
+
+
+@mcp.tool()
+def search_appointments(
+    q: Optional[str] = None,
+    status: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    limit: Optional[int] = 50,
+) -> str:
+    """Search appointments by text, status, or date range."""
+    try:
+        return _ok(crm.search_appointments(
+            get_user(), q=q, status=status, date_from=date_from, date_to=date_to, limit=limit or 50,
+        ))
+    except Exception as e:
+        return _err(e)
+
+
+@mcp.tool()
+def get_appointment_details(appointment_id: int) -> str:
+    """Get one appointment by id."""
+    try:
+        return _ok(crm.get_appointment_details(get_user(), appointment_id))
+    except Exception as e:
+        return _err(e)
+
+
+@mcp.tool()
+def update_appointment_status(
+    appointment_id: int,
+    status: str,
+    minutes_of_meeting: Optional[str] = None,
+) -> str:
+    """Update appointment status (scheduled, completed, cancelled, no_show). Optional minutes_of_meeting when completed."""
+    try:
+        return _ok(crm.update_appointment_status(
+            get_user(), appointment_id, status, minutes_of_meeting=minutes_of_meeting,
+        ))
+    except Exception as e:
+        return _err(e)
+
+
 def create_mcp_asgi_app(path: str = "/mcp"):
     """Streamable HTTP ASGI app. Default path /mcp for Claude."""
     errors = []

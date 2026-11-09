@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 32px 10px !important;
+  padding: 18px 28px 12px !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -26,189 +26,400 @@
   letter-spacing: -0.02em;
 }
 .dash-top .page-subtitle { font-size: 13px; color: #64748b; margin: 0; }
-.top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.btn-export {
-  display: inline-flex;
-  align-items: center;
+.top-actions { display: flex; gap: 8px; align-items: center; }
+.btn-dark {
   height: 36px;
   padding: 0 14px;
-  background: #fff;
-  color: #334155;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-}
-.btn-export:hover { background: #f8fafc; }
-.btn-create {
-  display: inline-flex;
-  align-items: center;
-  height: 36px;
-  padding: 0 16px;
   background: #0f172a;
   color: #fff;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
   border: none;
-}
-.btn-create:hover { background: #1e293b; color: #fff; }
-.page-wrap { padding: 12px 32px 32px; }
-.stat-row {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-@media (max-width: 1100px) { .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.stat-card {
-  background: #fff;
-  border: 1px solid #e8ecf1;
-  border-radius: 12px;
-  padding: 14px 16px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-}
-.stat-card .label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
-  margin-bottom: 6px;
-}
-.stat-card .value {
-  font-size: 22px;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.03em;
-}
-.panel-card {
-  background: #fff;
-  border: 1px solid #e8ecf1;
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-  overflow: hidden;
-}
-.panel-toolbar {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f1f5f9;
-}
-.panel-toolbar form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  width: 100%;
-}
-.panel-toolbar input,
-.panel-toolbar select {
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  font-size: 13px;
-  font-family: inherit;
-  background: #fff;
-  color: #0f172a;
-}
-.panel-toolbar input[type="search"] {
-  min-width: 180px;
-  flex: 1;
-  max-width: 240px;
-}
-.panel-toolbar input[type="date"] { min-width: 140px; }
-.btn-filter {
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
   font-size: 13px;
   font-weight: 600;
-  color: #475569;
   cursor: pointer;
   font-family: inherit;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
 }
-.btn-filter:hover { background: #f8fafc; }
-.table-wrap { overflow-x: auto; }
-table.data-table {
-  width: 100%;
-  border-collapse: collapse;
+.btn-dark:hover { background: #1e293b; color: #fff; }
+.btn-light {
+  height: 36px;
+  padding: 0 12px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
 }
-.data-table th,
-.data-table td {
-  padding: 13px 16px;
-  text-align: left;
+.btn-light:hover { background: #f8fafc; }
+
+.page-wrap { padding: 0 28px 28px; }
+
+.ap {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .ap { grid-template-columns: 1fr; }
+}
+
+.week-card {
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.week-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid #f1f5f9;
-  vertical-align: middle;
+  flex-wrap: wrap;
 }
-.data-table th {
+.week-bar .nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.week-bar .nav button {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  font-family: inherit;
+}
+.week-bar .nav button:hover { background: #f8fafc; }
+.week-bar .label {
+  font-size: 14px;
+  font-weight: 650;
+  color: #0f172a;
+  margin-left: 4px;
+  min-width: 180px;
+}
+.week-bar .meta {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.week-scroll { overflow-x: auto; }
+.week {
+  display: grid;
+  grid-template-columns: 52px repeat(7, minmax(100px, 1fr));
+  min-width: 760px;
+}
+.week .h-time,
+.week .h-day {
   background: #fafbfc;
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid #f8fafc;
+  padding: 10px 6px;
+  text-align: center;
+}
+.week .h-day {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+.week .h-day .n {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 2px;
+}
+.week .h-day.is-today .n {
+  width: 26px;
+  height: 26px;
+  line-height: 26px;
+  margin: 2px auto 0;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #fff;
+}
+.week .t {
+  height: 44px;
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: right;
+  padding: 2px 6px 0 0;
+  border-right: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f8fafc;
+}
+.week .cell {
+  height: 44px;
+  border-right: 1px solid #f8fafc;
+  border-bottom: 1px solid #f8fafc;
+  position: relative;
+  background: #fff;
+}
+.week .cell:hover { background: #f8fafc; }
+.week .cell.past { background: #fcfcfd; }
+.week .cell.drop-over { background: #eef2ff; outline: 1px dashed #a5b4fc; outline-offset: -2px; }
+
+.block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 6px;
+  padding: 3px 6px;
   font-size: 11px;
   font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  border: 1px solid transparent;
+  z-index: 2;
+}
+.block:active { cursor: grabbing; }
+.block.dragging { opacity: 0.45; }
+.block.scheduled { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
+.block.completed { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+.block.cancelled { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.block.no_show { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+.block .tm { font-size: 10px; font-weight: 500; opacity: 0.8; }
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.side .card {
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  padding: 14px;
+}
+.side .card h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.m-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.m-nav button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #334155;
+  font-family: inherit;
+}
+.m-nav span { font-size: 13px; font-weight: 650; color: #0f172a; }
+.m-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+.m-grid .d0 {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.m-grid button {
+  height: 30px;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  font-size: 12px;
+  color: #0f172a;
+  cursor: pointer;
+  font-family: inherit;
+  position: relative;
+}
+.m-grid button:hover:not(:disabled) { background: #f1f5f9; }
+.m-grid button.muted { color: #cbd5e1; }
+.m-grid button.past { color: #cbd5e1; cursor: not-allowed; }
+.m-grid button.sel { background: #0f172a; color: #fff; }
+.m-grid button .dot {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: #3b82f6;
+}
+.m-grid button.sel .dot { background: #93c5fd; }
+
+.stats-mini {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stats-mini .s {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px;
+}
+.stats-mini .s .l { font-size: 11px; color: #64748b; margin-bottom: 2px; }
+.stats-mini .s .v { font-size: 18px; font-weight: 700; color: #0f172a; }
+
+.detail-empty { font-size: 13px; color: #94a3b8; padding: 6px 0 2px; }
+.row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 6px;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.row .k { color: #64748b; font-weight: 600; }
+.row .v { color: #0f172a; word-break: break-word; }
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.actions a, .actions button {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.actions .pri { background: #0f172a; color: #fff; border-color: #0f172a; }
+.actions .dan { color: #b91c1c; border-color: #fecaca; }
+
+.slots { margin-top: 12px; }
+.slots h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  white-space: nowrap;
 }
-.data-table tbody tr:last-child td { border-bottom: none; }
-.data-table tbody tr:hover { background: #fafbfc; }
-.muted { color: #94a3b8; }
-.status-text {
-  font-size: 13px;
-  font-weight: 500;
-  color: #334155;
-}
-.status-text.scheduled { color: #4338ca; }
-.status-text.completed { color: #166534; }
-.status-text.cancelled { color: #991b1b; }
-.status-text.no_show { color: #b45309; }
-.status-select {
-  height: 32px;
-  padding: 0 8px;
+.chip {
+  display: inline-flex;
+  height: 28px;
+  padding: 0 10px;
+  margin: 0 6px 6px 0;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 7px;
   font-size: 12px;
-  font-family: inherit;
+  font-weight: 600;
+  color: #334155;
   background: #fff;
-  color: #0f172a;
-}
-.actions-cell {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  white-space: nowrap;
-}
-.btn-link {
-  font-size: 13px;
-  font-weight: 500;
-  color: #4f46e5;
-  text-decoration: none;
-  background: none;
-  border: none;
-  padding: 0;
   cursor: pointer;
   font-family: inherit;
 }
-.btn-link:hover { text-decoration: underline; }
-.btn-link.danger { color: #b91c1c; }
-.empty {
-  text-align: center;
-  color: #94a3b8;
-  padding: 36px 16px;
+.chip:hover { background: #f8fafc; }
+.chip.off { opacity: 0.4; cursor: not-allowed; text-decoration: line-through; }
+
+.toast {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 3000;
+  background: #0f172a;
+  color: #fff;
+  padding: 11px 16px;
+  border-radius: 10px;
   font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
 }
-.notes-cell {
-  max-width: 220px;
+.toast.on { opacity: 1; transform: translateY(0); }
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal.on { display: flex; }
+.modal .box {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 440px;
+  border: 1px solid #e8ecf1;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+.modal .hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.modal .hd h3 { margin: 0; font-size: 15px; font-weight: 700; color: #0f172a; }
+.modal .hd button {
+  border: none;
+  background: none;
+  font-size: 20px;
+  color: #64748b;
+  cursor: pointer;
+  line-height: 1;
+}
+.modal .bd { padding: 16px; }
+.modal label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
   color: #475569;
+  margin-bottom: 5px;
+}
+.modal input, .modal select, .modal textarea {
+  width: 100%;
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #0f172a;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+.modal textarea { height: 100px; padding: 10px 11px; resize: vertical; }
+.modal .ft {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>
 </head>
@@ -220,114 +431,374 @@ table.data-table {
   <header class="top-bar dash-top">
     <div>
       <h1 class="page-title">Appointments</h1>
-      <p class="page-subtitle">Viewings and meetings across the team</p>
+      <p class="page-subtitle">Week calendar · drag to reschedule</p>
     </div>
     <div class="top-actions">
-      <a href="{{ url_for('admin.admin_add_appointment') }}" class="btn-create">Schedule</a>
+      <a class="btn-dark" href="{{ url_for('admin.admin_add_appointment') }}">Schedule</a>
     </div>
   </header>
 
   <div class="page-wrap">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}" style="margin-bottom:14px">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+    <div class="ap">
+      <div class="week-card">
+        <div class="week-bar">
+          <div class="nav">
+            <button type="button" id="prevWeek" title="Previous week">‹</button>
+            <button type="button" id="todayWeek">Today</button>
+            <button type="button" id="nextWeek" title="Next week">›</button>
+            <span class="label" id="weekLabel"></span>
+          </div>
+          <span class="meta">Drag an appointment onto another slot to move it</span>
+        </div>
+        <div class="week-scroll">
+          <div class="week" id="week"></div>
+        </div>
+      </div>
 
-    <div class="stat-row">
-      <div class="stat-card">
-        <div class="label">Total</div>
-        <div class="value">{{ stats.total }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Upcoming</div>
-        <div class="value">{{ stats.upcoming }}</div>
-      </div>
-      {% for st in statuses %}
-      <div class="stat-card">
-        <div class="label">{{ status_labels[st] }}</div>
-        <div class="value">{{ stats[st] }}</div>
-      </div>
-      {% endfor %}
-    </div>
+      <aside class="side">
+        <div class="card">
+          <div class="stats-mini">
+            <div class="s"><div class="l">Total</div><div class="v">{{ stats.total }}</div></div>
+            <div class="s"><div class="l">Upcoming</div><div class="v">{{ stats.upcoming }}</div></div>
+            <div class="s"><div class="l">Completed</div><div class="v">{{ stats.completed }}</div></div>
+            <div class="s"><div class="l">No show</div><div class="v">{{ stats.no_show }}</div></div>
+          </div>
+        </div>
 
-    <div class="panel-card">
-      <div class="panel-toolbar">
-        <form method="GET" action="{{ url_for('admin.admin_appointments') }}">
-          <input type="search" name="q" value="{{ q }}" placeholder="Search client, property, agent">
-          <select name="status">
-            <option value="">All statuses</option>
-            {% for s in statuses %}
-            <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ status_labels[s] }}</option>
-            {% endfor %}
-          </select>
-          <select name="agent_id">
-            <option value="">All agents</option>
-            {% for a in agents %}
-            <option value="{{ a.id }}" {% if agent_id == a.id|string %}selected{% endif %}>{{ a.full_name }}</option>
-            {% endfor %}
-          </select>
-          <input type="date" name="date_from" value="{{ date_from }}" title="From date">
-          <input type="date" name="date_to" value="{{ date_to }}" title="To date">
-          <button type="submit" class="btn-filter">Filter</button>
-          {% if q or status_filter or agent_id or date_from or date_to %}
-          <a href="{{ url_for('admin.admin_appointments') }}" class="btn-filter">Clear</a>
-          {% endif %}
-        </form>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Date and time</th>
-              <th>Client</th>
-              <th>Property</th>
-              <th>Agent</th>
-              <th>Status</th>
-              <th>Notes</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for a in appointments %}
-            <tr>
-              <td>{{ a.appointment_date or '' }}</td>
-              <td>{% if a.client_name %}{{ a.client_name }}{% else %}<span class="muted">None</span>{% endif %}</td>
-              <td>{% if a.property_title %}{{ a.property_title }}{% else %}<span class="muted">None</span>{% endif %}</td>
-              <td>{% if a.agent_name %}{{ a.agent_name }}{% else %}<span class="muted">Unassigned</span>{% endif %}</td>
-              <td>
-                <form method="POST" action="{{ url_for('admin.admin_appointment_status', appointment_id=a.id) }}" style="margin:0">
-                  <select name="status" class="status-select" onchange="this.form.submit()">
-                    {% for s in statuses %}
-                    <option value="{{ s }}" {% if a.status == s %}selected{% endif %}>{{ status_labels[s] }}</option>
-                    {% endfor %}
-                  </select>
-                </form>
-              </td>
-              <td class="notes-cell" title="{{ a.notes or '' }}">{% if a.notes %}{{ a.notes }}{% else %}<span class="muted">None</span>{% endif %}</td>
-              <td class="actions-cell">
-                <a class="btn-link" href="{{ url_for('admin.admin_edit_appointment', appointment_id=a.id) }}">Edit</a>
-                <form method="POST"
-                      action="{{ url_for('admin.admin_delete_appointment', appointment_id=a.id) }}"
-                      style="margin:0"
-                      onsubmit="return confirm('Remove this appointment?');">
-                  <button type="submit" class="btn-link danger">Delete</button>
-                </form>
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="7" class="empty">No appointments match the current filters.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+        <div class="card">
+          <h3>Month</h3>
+          <div class="m-nav">
+            <button type="button" id="prevMonth">‹</button>
+            <span id="monthLabel"></span>
+            <button type="button" id="nextMonth">›</button>
+          </div>
+          <div class="m-grid" id="month"></div>
+        </div>
+
+        <div class="card">
+          <h3 id="dayTitle">Today</h3>
+          <div id="dayBody"><div class="detail-empty">Select a day or an appointment.</div></div>
+        </div>
+      </aside>
     </div>
   </div>
 </main>
 </div>
+
+<div class="toast" id="toast">Updated</div>
+
+<div class="modal" id="quickModal">
+  <div class="box">
+    <div class="hd">
+      <h3>Schedule appointment</h3>
+      <button type="button" onclick="closeQuick()">&times;</button>
+    </div>
+    <div class="bd">
+      <form method="POST" action="{{ url_for('admin.admin_add_appointment') }}">
+        <label>When</label>
+        <input type="text" id="qLabel" readonly style="background:#f8fafc">
+        <input type="hidden" name="appointment_date" id="qDate">
+        <label>Client</label>
+        <select name="client_id">
+          <option value="">Select client</option>
+          {% for c in clients %}<option value="{{ c.id }}">{{ c.full_name }}</option>{% endfor %}
+        </select>
+        <label>Property</label>
+        <select name="property_id">
+          <option value="">Select property</option>
+          {% for p in properties %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}
+        </select>
+        <label>Agent</label>
+        <select name="agent_id">
+          <option value="">Select agent</option>
+          {% for a in agents %}<option value="{{ a.id }}">{{ a.full_name }}</option>{% endfor %}
+        </select>
+        <label>Notes</label>
+        <textarea name="notes" placeholder="Optional"></textarea>
+        <input type="hidden" name="status" value="scheduled">
+        <div class="ft">
+          <button type="button" class="btn-light" onclick="closeQuick()">Cancel</button>
+          <button type="submit" class="btn-dark">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="momModal">
+  <div class="box">
+    <div class="hd">
+      <h3>Minutes of Meeting</h3>
+      <button type="button" onclick="closeMom()">&times;</button>
+    </div>
+    <div class="bd">
+      <form method="POST" id="momForm">
+        <label>Discussion notes</label>
+        <textarea name="minutes_of_meeting" id="momText" placeholder="What was discussed..."></textarea>
+        <div class="ft">
+          <button type="button" class="btn-light" onclick="closeMom()">Cancel</button>
+          <button type="submit" class="btn-dark">Save and complete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+var APPTS = {{ all_appointments_json | safe }};
+var HOURS = [8,9,10,11,12,13,14,15,16,17];
+var MAX = 6;
+var weekStart = startOfWeek(new Date());
+var monthCursor = new Date(); monthCursor.setDate(1);
+var selected = ymd(new Date());
+var dragId = null;
+
+function pad(n){ return n < 10 ? '0'+n : ''+n; }
+function ymd(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function dmy(s){
+  if(!s) return '';
+  var p = String(s).slice(0,10).split('-');
+  return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0].slice(-2) : s;
+}
+function dmyLong(s){
+  if(!s) return '';
+  var p = String(s).slice(0,10).split('-');
+  return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : s;
+}
+function tm(s){
+  if(!s) return '';
+  var t = String(s).replace(' ','T');
+  return t.indexOf('T')>=0 ? t.split('T')[1].slice(0,5) : '';
+}
+function startOfWeek(d){
+  var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var day = x.getDay();
+  x.setDate(x.getDate() + (day===0 ? -6 : 1-day));
+  return x;
+}
+function addDays(d,n){ var x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function isPast(ds){ return ds < ymd(new Date()); }
+function onDay(ds){
+  return APPTS.filter(function(a){ return String(a.appointment_date||'').slice(0,10)===ds; })
+    .sort(function(a,b){ return String(a.appointment_date).localeCompare(String(b.appointment_date)); });
+}
+function hourOf(a){
+  var t = tm(a.appointment_date);
+  return t ? parseInt(t.split(':')[0],10) : null;
+}
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg || 'Updated';
+  el.classList.add('on');
+  setTimeout(function(){ el.classList.remove('on'); }, 2000);
+}
+
+function renderWeek(){
+  var days = [];
+  for(var i=0;i<7;i++) days.push(addDays(weekStart,i));
+  document.getElementById('weekLabel').textContent = dmyLong(ymd(days[0]))+' – '+dmyLong(ymd(days[6]));
+  var today = ymd(new Date());
+  var html = '<div class="h-time"></div>';
+  var names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  days.forEach(function(d,i){
+    var ds = ymd(d);
+    html += '<div class="h-day'+(ds===today?' is-today':'')+'">'+names[i]+'<span class="n">'+d.getDate()+'</span></div>';
+  });
+  HOURS.forEach(function(h){
+    html += '<div class="t">'+pad(h)+':00</div>';
+    days.forEach(function(d){
+      var ds = ymd(d);
+      var past = isPast(ds);
+      html += '<div class="cell'+(past?' past':'')+'" data-date="'+ds+'" data-hour="'+h+'"'
+        +' ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)"'
+        +' onclick="onCellClick(\''+ds+'\','+h+')">';
+      onDay(ds).forEach(function(a){
+        if(hourOf(a)!==h) return;
+        var st = a.status || 'scheduled';
+        var title = a.client_name || a.property_title || 'Appointment';
+        html += '<div class="block '+st+'" draggable="true" data-id="'+a.id+'"'
+          +' ondragstart="onDragStart(event)" ondragend="onDragEnd(event)"'
+          +' onclick="event.stopPropagation();selectAppt('+a.id+')">'
+          +'<div class="tm">'+tm(a.appointment_date)+'</div>'+esc(String(title).slice(0,16))
+          +'</div>';
+      });
+      html += '</div>';
+    });
+  });
+  document.getElementById('week').innerHTML = html;
+}
+
+function renderMonth(){
+  var y = monthCursor.getFullYear(), m = monthCursor.getMonth();
+  document.getElementById('monthLabel').textContent =
+    ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m]+' '+y;
+  var html = '';
+  ['S','M','T','W','T','F','S'].forEach(function(x){ html += '<div class="d0">'+x+'</div>'; });
+  var first = new Date(y,m,1), start = first.getDay(), dim = new Date(y,m+1,0).getDate();
+  var prevDim = new Date(y,m,0).getDate();
+  var cells = [];
+  for(var i=0;i<start;i++) cells.push({d:prevDim-start+1+i, o:1, y:m?y:y-1, m:m?m-1:11});
+  for(var d=1;d<=dim;d++) cells.push({d:d, o:0, y:y, m:m});
+  while(cells.length%7) cells.push({d:cells.length-(start+dim)+1, o:1, y:m===11?y+1:y, m:m===11?0:m+1});
+  cells.forEach(function(c){
+    var ds = c.y+'-'+pad(c.m+1)+'-'+pad(c.d);
+    var cls = '';
+    if(c.o) cls += ' muted';
+    if(isPast(ds)) cls += ' past';
+    if(ds===selected) cls += ' sel';
+    html += '<button type="button" class="'+cls.trim()+'" '+(isPast(ds)?'disabled':'')+' onclick="pickDay(\''+ds+'\')">'+c.d;
+    if(!c.o && onDay(ds).length) html += '<span class="dot"></span>';
+    html += '</button>';
+  });
+  document.getElementById('month').innerHTML = html;
+}
+
+function pickDay(ds){
+  if(isPast(ds)) return;
+  selected = ds;
+  weekStart = startOfWeek(new Date(ds+'T12:00:00'));
+  renderWeek();
+  renderMonth();
+  renderDay(ds);
+}
+
+function selectAppt(id){
+  var a = APPTS.find(function(x){ return x.id===id; });
+  if(!a) return;
+  selected = String(a.appointment_date||'').slice(0,10);
+  renderWeek();
+  renderMonth();
+  renderDay(selected, id);
+}
+
+function renderDay(ds, focusId){
+  document.getElementById('dayTitle').textContent = dmyLong(ds);
+  var list = onDay(ds);
+  var html = '';
+  if(!list.length){
+    html = '<div class="detail-empty">No appointments this day.</div>';
+  } else {
+    list.forEach(function(a){
+      var hi = focusId && a.id===focusId;
+      html += '<div style="padding:8px 0;border-bottom:1px solid #f1f5f9'+(hi?';background:#f8fafc;margin:0 -6px;padding:8px 6px;border-radius:8px':'')+'">';
+      html += '<div class="row"><div class="k">Time</div><div class="v">'+tm(a.appointment_date)+' · '+dmy(a.appointment_date)+'</div></div>';
+      html += '<div class="row"><div class="k">Client</div><div class="v">'+esc(a.client_name||'—')+'</div></div>';
+      html += '<div class="row"><div class="k">Property</div><div class="v">'+esc(a.property_title||'—')+'</div></div>';
+      html += '<div class="row"><div class="k">Agent</div><div class="v">'+esc(a.agent_name||'—')+'</div></div>';
+      html += '<div class="row"><div class="k">Status</div><div class="v">'+esc((a.status||'').replace('_',' '))+'</div></div>';
+      if(a.notes) html += '<div class="row"><div class="k">Notes</div><div class="v">'+esc(a.notes)+'</div></div>';
+      if(a.minutes_of_meeting) html += '<div class="row"><div class="k">Minutes</div><div class="v">'+esc(a.minutes_of_meeting)+'</div></div>';
+      html += '<div class="actions">';
+      html += '<a href="/admin/appointments/'+a.id+'/edit">Edit</a>';
+      if((a.status||'')!=='completed') html += '<button type="button" class="pri" onclick="openMom('+a.id+')">Complete</button>';
+      html += '<form method="POST" action="/admin/appointments/'+a.id+'/delete" style="margin:0" onsubmit="return confirm(\'Remove this appointment?\');"><button type="submit" class="dan">Delete</button></form>';
+      html += '</div></div>';
+    });
+  }
+  html += '<div class="slots"><h4>Open slots</h4>';
+  if(isPast(ds)){
+    html += '<div class="detail-empty">Past date</div>';
+  } else if(list.length >= MAX){
+    html += '<div class="detail-empty">Fully booked</div>';
+  } else {
+    HOURS.forEach(function(h){
+      var taken = list.some(function(a){ return hourOf(a)===h; });
+      if(taken) html += '<button type="button" class="chip off" disabled>'+pad(h)+':00</button>';
+      else html += '<button type="button" class="chip" onclick="openQuick(\''+ds+'\','+h+')">'+pad(h)+':00</button>';
+    });
+  }
+  html += '</div>';
+  document.getElementById('dayBody').innerHTML = html;
+}
+
+function onCellClick(ds,h){
+  if(isPast(ds)) return;
+  pickDay(ds);
+  var taken = onDay(ds).some(function(a){ return hourOf(a)===h; });
+  if(!taken && onDay(ds).length < MAX) openQuick(ds,h);
+}
+
+function onDragStart(e){
+  dragId = parseInt(e.currentTarget.getAttribute('data-id'),10);
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(dragId));
+}
+function onDragEnd(e){
+  e.currentTarget.classList.remove('dragging');
+  dragId = null;
+  document.querySelectorAll('.cell.drop-over').forEach(function(c){ c.classList.remove('drop-over'); });
+}
+function onDragOver(e){
+  e.preventDefault();
+  e.currentTarget.classList.add('drop-over');
+}
+function onDragLeave(e){
+  e.currentTarget.classList.remove('drop-over');
+}
+function onDrop(e){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drop-over');
+  var cell = e.currentTarget;
+  var ds = cell.getAttribute('data-date');
+  var h = parseInt(cell.getAttribute('data-hour'),10);
+  var id = dragId || parseInt(e.dataTransfer.getData('text/plain'),10);
+  if(!id || isPast(ds)) return;
+  var conflict = onDay(ds).some(function(a){ return a.id!==id && hourOf(a)===h; });
+  if(conflict){ toast('Slot taken'); return; }
+  var newDt = ds+'T'+pad(h)+':00';
+  fetch('/admin/appointments/'+id+'/reschedule', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({appointment_date: newDt})
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if(!res.ok){ toast('Could not move'); return; }
+    var a = APPTS.find(function(x){ return x.id===id; });
+    if(a) a.appointment_date = newDt;
+    selected = ds;
+    renderWeek();
+    renderMonth();
+    renderDay(ds, id);
+    toast('Updated');
+  }).catch(function(){ toast('Could not move'); });
+}
+
+function openQuick(ds,h){
+  document.getElementById('qLabel').value = dmyLong(ds)+' · '+pad(h)+':00';
+  document.getElementById('qDate').value = ds+'T'+pad(h)+':00';
+  document.getElementById('quickModal').classList.add('on');
+}
+function closeQuick(){ document.getElementById('quickModal').classList.remove('on'); }
+function openMom(id){
+  document.getElementById('momForm').action = '/admin/appointments/'+id+'/minutes';
+  document.getElementById('momText').value = '';
+  document.getElementById('momModal').classList.add('on');
+}
+function closeMom(){ document.getElementById('momModal').classList.remove('on'); }
+
+document.getElementById('prevWeek').onclick = function(){ weekStart = addDays(weekStart,-7); renderWeek(); };
+document.getElementById('nextWeek').onclick = function(){ weekStart = addDays(weekStart,7); renderWeek(); };
+document.getElementById('todayWeek').onclick = function(){
+  weekStart = startOfWeek(new Date());
+  selected = ymd(new Date());
+  renderWeek(); renderMonth(); renderDay(selected);
+};
+document.getElementById('prevMonth').onclick = function(){ monthCursor.setMonth(monthCursor.getMonth()-1); renderMonth(); };
+document.getElementById('nextMonth').onclick = function(){ monthCursor.setMonth(monthCursor.getMonth()+1); renderMonth(); };
+
+document.getElementById('quickModal').addEventListener('click', function(e){ if(e.target===this) closeQuick(); });
+document.getElementById('momModal').addEventListener('click', function(e){ if(e.target===this) closeMom(); });
+
+{% if toast %}
+toast({{ toast|tojson }});
+{% endif %}
+
+renderWeek();
+renderMonth();
+renderDay(selected);
+</script>
 </body>
 </html>

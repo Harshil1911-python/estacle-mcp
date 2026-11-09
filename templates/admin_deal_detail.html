@@ -1,54 +1,239 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Estacle | Deal Detail</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 <style>
 .main-content { background: transparent !important; }
 .top-bar.dash-top {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 32px 10px !important; background: transparent !important;
-  border: none !important; box-shadow: none !important; gap: 12px; flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px 10px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  gap: 12px;
+  flex-wrap: wrap;
 }
-.dash-top .page-title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 1px; }
-.dash-top .page-subtitle { font-size: 12.5px; color: #64748b; margin: 0; }
-.top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.btn-export, .btn-create, .btn-danger {
-  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
-  border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; font-family: inherit;
+.dash-top .page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 2px;
+  letter-spacing: -0.02em;
 }
-.btn-export { background: #fff; color: #334155; border: 1px solid #e2e8f0; }
-.btn-create { background: #0f172a; color: #fff; }
-.btn-danger { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-.page-wrap { padding: 12px 32px 28px; max-width: 900px; }
-.card {
-  background: #fff; border: 1px solid #e8ecf1; border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(15,23,42,0.04); padding: 20px 22px;
+.dash-top .page-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
 }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
-@media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
-.field label { display: block; font-size: 11.5px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 4px; }
-.field .val { font-size: 14.5px; color: #0f172a; font-weight: 600; }
-.badge {
-  display: inline-flex; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 6px;
-  background: #f1f5f9; color: #475569; text-transform: capitalize;
+.top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
 }
-.notes { margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
-.notes p { margin: 0; color: #334155; font-size: 13.5px; white-space: pre-wrap; }
+.btn-export:hover { background: #f8fafc; }
+.btn-create {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+}
+.btn-create:hover { background: #1e293b; color: #fff; }
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  background: #fff;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.page-wrap { padding: 12px 32px 32px; max-width: 980px; }
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat-card {
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.stat-card .label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+.stat-card .value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+.stat-card .sub {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+.panel-card {
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.panel-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.panel-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.panel-body { padding: 18px; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 28px;
+}
+@media (max-width: 700px) { .detail-grid { grid-template-columns: 1fr; } }
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 5px;
+}
+.field .val {
+  font-size: 14px;
+  color: #0f172a;
+  font-weight: 600;
+}
+.status-text {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: #334155;
+}
+.status-text.closed { color: #166534; }
+.status-text.completed { color: #0f766e; }
+.status-text.lost { color: #991b1b; }
+.status-text.under_contract { color: #0369a1; }
+.status-text.negotiation { color: #b45309; }
+.status-text.offer { color: #4338ca; }
+.progress-wrap {
+  margin-top: 8px;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: #0f172a;
+  border-radius: 999px;
+}
+.notes-block {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+.notes-block p {
+  margin: 0;
+  color: #334155;
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mini-table th,
+.mini-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.mini-table th {
+  background: #fafbfc;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mini-table tbody tr:last-child td { border-bottom: none; }
+.muted { color: #94a3b8; }
+.num { font-variant-numeric: tabular-nums; }
+.link-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.btn-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4f46e5;
+  text-decoration: none;
+}
+.btn-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 <div class="app-layout">
-{% set active = 'deals' %}
+{% set active = 'deals_summary' %}
 {% include 'partials/admin_sidebar.html' %}
 <main class="main-content">
   <header class="top-bar dash-top">
     <div>
       <h1 class="page-title">{{ deal.title }}</h1>
-      <p class="page-subtitle">Deal #{{ deal.id }} · {{ stage_labels.get(deal.stage, deal.stage) }}</p>
+      <p class="page-subtitle">Deal #{{ deal.id }} · {{ summary_status_label }}</p>
     </div>
     <div class="top-actions">
+      <a href="{{ url_for('admin.admin_deals_summary') }}" class="btn-export">Overall Summary</a>
       <a href="{{ url_for('admin.admin_deals') }}" class="btn-export">All deals</a>
       <a href="{{ url_for('admin.admin_edit_deal', deal_id=deal.id) }}" class="btn-create">Edit</a>
       <form method="POST" action="{{ url_for('admin.admin_delete_deal', deal_id=deal.id) }}" style="margin:0" onsubmit="return confirm('Delete this deal?');">
@@ -56,24 +241,167 @@
       </form>
     </div>
   </header>
+
   <div class="page-wrap">
-    <div class="card">
-      <div class="grid">
-        <div class="field"><label>Stage</label><div class="val"><span class="badge">{{ stage_labels.get(deal.stage, deal.stage) }}</span></div></div>
-        <div class="field"><label>Value</label><div class="val">{{ format_money(deal.value or 0, currency) }}</div></div>
-        <div class="field"><label>Commission</label><div class="val">{{ deal.commission_rate or 0 }}% → {{ format_money(deal.commission_amount or 0, currency) }}</div></div>
-        <div class="field"><label>Expected close</label><div class="val">{{ deal.expected_close or '—' }}</div></div>
-        <div class="field"><label>Property</label><div class="val">{{ deal.property_title or '—' }}</div></div>
-        <div class="field"><label>Client</label><div class="val">{{ deal.client_name or '—' }}</div></div>
-        <div class="field"><label>Agent</label><div class="val">{{ deal.agent_name or '—' }}</div></div>
-        <div class="field"><label>Updated</label><div class="val">{{ deal.updated_at or deal.created_at or '—' }}</div></div>
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="label">Deal value</div>
+        <div class="value">{{ format_money(deal.value or 0, currency) }}</div>
+        <div class="sub">Property amount</div>
       </div>
-      {% if deal.notes %}
-      <div class="notes">
-        <label style="font-size:11.5px;font-weight:600;color:#64748b;text-transform:uppercase">Notes</label>
-        <p>{{ deal.notes }}</p>
+      <div class="stat-card">
+        <div class="label">Customer paid</div>
+        <div class="value">{{ format_money(customer_paid, currency) }}</div>
+        <div class="sub">{{ customer_pct }}% · Balance {{ format_money(customer_balance, currency) }}</div>
       </div>
-      {% endif %}
+      <div class="stat-card">
+        <div class="label">Brokerage due</div>
+        <div class="value">{{ format_money(brokerage_due, currency) }}</div>
+        <div class="sub">Rate {{ deal.commission_rate or 0 }}%</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Brokerage received</div>
+        <div class="value">{{ format_money(brokerage_received, currency) }}</div>
+        <div class="sub">{{ brokerage_pct }}% · Balance {{ format_money(brokerage_balance, currency) }}</div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-head">
+        <h2>Deal overview</h2>
+        <span class="status-text {{ summary_status }}">{{ summary_status_label }}</span>
+      </div>
+      <div class="panel-body">
+        <div class="detail-grid">
+          <div class="field">
+            <label>Pipeline stage</label>
+            <div class="val">{{ stage_labels.get(deal.stage, deal.stage) }}</div>
+          </div>
+          <div class="field">
+            <label>Summary status</label>
+            <div class="val status-text {{ summary_status }}">{{ summary_status_label }}</div>
+          </div>
+          <div class="field">
+            <label>Property</label>
+            <div class="val">{% if deal.property_title %}{{ deal.property_title }}{% else %}<span class="muted">None</span>{% endif %}</div>
+          </div>
+          <div class="field">
+            <label>Customer</label>
+            <div class="val">{% if deal.client_name %}{{ deal.client_name }}{% else %}<span class="muted">None</span>{% endif %}</div>
+          </div>
+          <div class="field">
+            <label>Agent</label>
+            <div class="val">{% if deal.agent_name %}{{ deal.agent_name }}{% else %}<span class="muted">Unassigned</span>{% endif %}</div>
+          </div>
+          <div class="field">
+            <label>Expected close</label>
+            <div class="val">{% if deal.expected_close %}{{ deal.expected_close }}{% else %}<span class="muted">None</span>{% endif %}</div>
+          </div>
+          <div class="field">
+            <label>Created</label>
+            <div class="val">{{ deal.created_at or '—' }}</div>
+          </div>
+          <div class="field">
+            <label>Last updated</label>
+            <div class="val">{{ deal.updated_at or deal.created_at or '—' }}</div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <div class="field">
+            <label>Property payment progress</label>
+            <div class="progress-wrap"><div class="progress-bar" style="width: {{ customer_pct }}%"></div></div>
+            <div class="sub" style="margin-top:6px;font-size:12px;color:#64748b">
+              {{ format_money(customer_paid, currency) }} of {{ format_money(deal.value or 0, currency) }}
+              {% if customer_balance <= 0 %} · Full property amount received (Closed){% endif %}
+            </div>
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label>Brokerage progress</label>
+            <div class="progress-wrap"><div class="progress-bar" style="width: {{ brokerage_pct }}%"></div></div>
+            <div class="sub" style="margin-top:6px;font-size:12px;color:#64748b">
+              {{ format_money(brokerage_received, currency) }} of {{ format_money(brokerage_due, currency) }}
+              {% if customer_balance <= 0 and brokerage_balance <= 0 %} · Full property and brokerage received (Completed){% endif %}
+            </div>
+          </div>
+        </div>
+
+        {% if deal.notes %}
+        <div class="notes-block">
+          <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.04em">Notes</label>
+          <p>{{ deal.notes }}</p>
+        </div>
+        {% endif %}
+
+        <div class="link-row">
+          <a class="btn-link" href="{{ url_for('admin.admin_deal_payments', deal_id=deal.id) }}">Manage property payments</a>
+          <a class="btn-link" href="{{ url_for('admin.admin_deal_brokerage', deal_id=deal.id) }}">Manage brokerage payments</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-head">
+        <h2>Property payments</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Method</th>
+              <th>Reference</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in payments %}
+            <tr>
+              <td>{{ p.payment_date or p.created_at or '—' }}</td>
+              <td class="num">{{ format_money(p.amount or 0, currency) }}</td>
+              <td>{% if p.method %}{{ p.method }}{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td>{% if p.reference %}{{ p.reference }}{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td>{% if p.notes %}{{ p.notes }}{% else %}<span class="muted">—</span>{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="muted" style="padding:20px;text-align:center">No property payments recorded yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-head">
+        <h2>Brokerage payments</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Method</th>
+              <th>Reference</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in brokerage_payments %}
+            <tr>
+              <td>{{ p.payment_date or p.created_at or '—' }}</td>
+              <td class="num">{{ format_money(p.amount or 0, currency) }}</td>
+              <td>{% if p.method %}{{ p.method }}{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td>{% if p.reference %}{{ p.reference }}{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td>{% if p.notes %}{{ p.notes }}{% else %}<span class="muted">—</span>{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="muted" style="padding:20px;text-align:center">No brokerage payments recorded yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </main>

@@ -159,11 +159,12 @@ table.summary-table {
 .summary-table a.deal-link:hover { color: #4f46e5; }
 .status-text {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: #334155;
   text-transform: capitalize;
 }
 .status-text.closed { color: #166534; }
+.status-text.completed { color: #0f766e; }
 .status-text.lost { color: #991b1b; }
 .status-text.under_contract { color: #0369a1; }
 .status-text.negotiation { color: #b45309; }
@@ -195,6 +196,20 @@ table.summary-table {
   font-size: 13px;
 }
 .num { font-variant-numeric: tabular-nums; }
+.pay-hint {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.toast {
+  position: fixed; top: 20px; right: 20px; z-index: 2000;
+  background: #0f172a; color: #fff; padding: 12px 18px; border-radius: 10px;
+  font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(15,23,42,0.2);
+  opacity: 0; transform: translateY(-8px); transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
 </style>
 </head>
 <body>
@@ -205,7 +220,7 @@ table.summary-table {
   <header class="top-bar dash-top">
     <div>
       <h1 class="page-title">Overall Summary</h1>
-      <p class="page-subtitle">Complete list of deals with status, agent, and customer</p>
+      <p class="page-subtitle">Closed when property is fully paid. Completed when property and brokerage are fully paid.</p>
     </div>
     <div class="top-actions">
       <a href="{{ url_for('admin.admin_deals') }}" class="btn-export">All Deals</a>
@@ -215,20 +230,20 @@ table.summary-table {
   </header>
 
   <div class="page-wrap">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}" style="margin-bottom:14px">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
     <div class="stat-row">
       <div class="stat-card">
         <div class="label">Total</div>
         <div class="value">{{ stats.total }}</div>
       </div>
-      {% for st in stages %}
+      <div class="stat-card">
+        <div class="label">Closed</div>
+        <div class="value">{{ stats.closed }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Completed</div>
+        <div class="value">{{ stats.completed }}</div>
+      </div>
+      {% for st in stages if st not in ('closed',) %}
       <div class="stat-card">
         <div class="label">{{ stage_labels[st] }}</div>
         <div class="value">{{ stats[st] }}</div>
@@ -262,6 +277,8 @@ table.summary-table {
               <th>Customer</th>
               <th>Agent</th>
               <th>Value</th>
+              <th>Property paid</th>
+              <th>Brokerage</th>
               <th>Expected close</th>
               <th>Actions</th>
             </tr>
@@ -273,12 +290,20 @@ table.summary-table {
                 <a class="deal-link" href="{{ url_for('admin.admin_deal_detail', deal_id=d.id) }}">{{ d.title }}</a>
               </td>
               <td>
-                <span class="status-text {{ d.stage }}">{{ stage_labels.get(d.stage, d.stage) }}{% if d.stage == 'closed' %} · Completed{% endif %}</span>
+                <span class="status-text {{ d.summary_status }}">{{ d.summary_status_label }}</span>
               </td>
               <td>{% if d.property_title %}{{ d.property_title }}{% else %}<span class="muted">None</span>{% endif %}</td>
               <td>{% if d.client_name %}{{ d.client_name }}{% else %}<span class="muted">None</span>{% endif %}</td>
               <td>{% if d.agent_name %}{{ d.agent_name }}{% else %}<span class="muted">Unassigned</span>{% endif %}</td>
               <td class="num">{{ format_money(d.value or 0, currency) }}</td>
+              <td class="num">
+                {{ format_money(d.customer_paid or 0, currency) }}
+                <div class="pay-hint">Bal {{ format_money(d.customer_balance or 0, currency) }}</div>
+              </td>
+              <td class="num">
+                {{ format_money(d.brokerage_received or 0, currency) }}
+                <div class="pay-hint">of {{ format_money(d.brokerage_due or 0, currency) }}</div>
+              </td>
               <td>{% if d.expected_close %}{{ d.expected_close }}{% else %}<span class="muted">None</span>{% endif %}</td>
               <td class="actions-cell">
                 <a class="btn-link" href="{{ url_for('admin.admin_deal_detail', deal_id=d.id) }}">View</a>
@@ -294,7 +319,7 @@ table.summary-table {
             </tr>
             {% else %}
             <tr>
-              <td colspan="8" class="empty">No deals match the current filters.</td>
+              <td colspan="10" class="empty">No deals match the current filters.</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -304,5 +329,17 @@ table.summary-table {
   </div>
 </main>
 </div>
+
+<div class="toast" id="toast">Updated</div>
+<script>
+{% if toast %}
+(function(){
+  var el = document.getElementById('toast');
+  el.textContent = {{ toast|tojson }};
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 2200);
+})();
+{% endif %}
+</script>
 </body>
 </html>

@@ -23,6 +23,7 @@
   font-weight: 700;
   color: #0f172a;
   margin: 0 0 2px;
+  letter-spacing: -0.02em;
 }
 .dash-top .page-subtitle { font-size: 13px; color: #64748b; margin: 0; }
 .btn-export {
@@ -38,13 +39,29 @@
   font-weight: 600;
   text-decoration: none;
 }
-.page-wrap { padding: 12px 32px 32px; max-width: 720px; }
+.btn-export:hover { background: #f8fafc; }
+.page-wrap { padding: 12px 32px 32px; max-width: 920px; }
+.schedule-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .schedule-layout { grid-template-columns: 1fr; }
+}
 .panel-card {
   background: #fff;
   border: 1px solid #e8ecf1;
   border-radius: 12px;
-  padding: 24px;
+  padding: 22px 24px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.panel-card h2 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
 }
 .form-row {
   display: grid;
@@ -76,14 +93,19 @@
   box-sizing: border-box;
 }
 .form-group textarea {
-  height: 96px;
+  height: 100px;
   padding: 10px 12px;
   resize: vertical;
+}
+.form-group input[type="date"],
+.form-group input[type="time"] {
+  color: #0f172a;
 }
 .form-actions {
   display: flex;
   gap: 10px;
   margin-top: 8px;
+  flex-wrap: wrap;
 }
 .btn-primary {
   height: 40px;
@@ -111,6 +133,94 @@
   display: inline-flex;
   align-items: center;
 }
+.calendar-card {
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.calendar-card h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cal-nav button {
+  height: 28px;
+  width: 28px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #334155;
+  font-family: inherit;
+}
+.cal-nav button:hover { background: #f8fafc; }
+.cal-nav .month-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+.cal-grid .dow {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  padding: 4px 0;
+  text-transform: uppercase;
+}
+.cal-grid .day {
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #0f172a;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cal-grid .day:hover { background: #f1f5f9; }
+.cal-grid .day.other { color: #cbd5e1; }
+.cal-grid .day.today {
+  font-weight: 700;
+  border: 1px solid #e2e8f0;
+}
+.cal-grid .day.selected {
+  background: #0f172a;
+  color: #fff;
+  font-weight: 600;
+}
+.selected-date {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 13px;
+  color: #475569;
+}
+.selected-date strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
 </style>
 </head>
 <body>
@@ -121,7 +231,7 @@
   <header class="top-bar dash-top">
     <div>
       <h1 class="page-title">Schedule Appointment</h1>
-      <p class="page-subtitle">Book a viewing or meeting</p>
+      <p class="page-subtitle">Book a viewing or meeting with calendar support</p>
     </div>
     <a href="{{ url_for('admin.admin_appointments') }}" class="btn-export">Back</a>
   </header>
@@ -135,63 +245,205 @@
       {% endif %}
     {% endwith %}
 
-    <div class="panel-card">
-      <form method="POST">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Client</label>
-            <select name="client_id">
-              <option value="">Select client</option>
-              {% for c in clients %}
-              <option value="{{ c.id }}">{{ c.full_name }}</option>
-              {% endfor %}
-            </select>
+    <div class="schedule-layout">
+      <div class="panel-card">
+        <h2>Appointment details</h2>
+        <form method="POST" id="scheduleForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Client</label>
+              <select name="client_id">
+                <option value="">Select client</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}">{{ c.full_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Property</label>
+              <select name="property_id">
+                <option value="">Select property</option>
+                {% for p in properties %}
+                <option value="{{ p.id }}">{{ p.title }}</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Property</label>
-            <select name="property_id">
-              <option value="">Select property</option>
-              {% for p in properties %}
-              <option value="{{ p.id }}">{{ p.title }}</option>
-              {% endfor %}
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Agent</label>
+              <select name="agent_id">
+                <option value="">Select agent</option>
+                {% for a in agents %}
+                <option value="{{ a.id }}">{{ a.full_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select name="status">
+                {% for s in statuses %}
+                <option value="{{ s }}" {% if s == 'scheduled' %}selected{% endif %}>{{ status_labels[s] }}</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Agent</label>
-            <select name="agent_id">
-              <option value="">Select agent</option>
-              {% for a in agents %}
-              <option value="{{ a.id }}">{{ a.full_name }}</option>
-              {% endfor %}
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" name="appt_date" id="apptDate" required>
+              <div class="hint">Pick a date from the calendar or use this field</div>
+            </div>
+            <div class="form-group">
+              <label>Time</label>
+              <input type="time" name="appt_time" id="apptTime" required value="10:00">
+            </div>
           </div>
+          <input type="hidden" name="appointment_date" id="appointmentDateCombined">
           <div class="form-group">
-            <label>Date and time</label>
-            <input type="datetime-local" name="appointment_date" required>
+            <label>Notes</label>
+            <textarea name="notes" placeholder="Optional notes for the viewing or meeting"></textarea>
           </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Schedule appointment</button>
+            <a href="{{ url_for('admin.admin_appointments') }}" class="btn-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+
+      <div class="calendar-card">
+        <h2>Calendar</h2>
+        <div class="cal-nav">
+          <button type="button" id="calPrev" aria-label="Previous month">‹</button>
+          <div class="month-label" id="calMonthLabel"></div>
+          <button type="button" id="calNext" aria-label="Next month">›</button>
         </div>
-        <div class="form-group">
-          <label>Status</label>
-          <select name="status">
-            {% for s in statuses %}
-            <option value="{{ s }}" {% if s == 'scheduled' %}selected{% endif %}>{{ status_labels[s] }}</option>
-            {% endfor %}
-          </select>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="selected-date">
+          <strong id="selectedDateLabel">No date selected</strong>
+          <span>Click a day to set the appointment date</span>
         </div>
-        <div class="form-group">
-          <label>Notes</label>
-          <textarea name="notes" placeholder="Optional notes"></textarea>
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="btn-primary">Save appointment</button>
-          <a href="{{ url_for('admin.admin_appointments') }}" class="btn-secondary">Cancel</a>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 </main>
 </div>
+
+<script>
+(function () {
+  var viewYear, viewMonth;
+  var selected = null;
+  var dateInput = document.getElementById('apptDate');
+  var timeInput = document.getElementById('apptTime');
+  var combined = document.getElementById('appointmentDateCombined');
+  var monthLabel = document.getElementById('calMonthLabel');
+  var grid = document.getElementById('calGrid');
+  var selectedLabel = document.getElementById('selectedDateLabel');
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var dows = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function fmt(y, m, d) {
+    return y + '-' + pad(m + 1) + '-' + pad(d);
+  }
+
+  function syncCombined() {
+    if (dateInput.value && timeInput.value) {
+      combined.value = dateInput.value + 'T' + timeInput.value;
+    } else if (dateInput.value) {
+      combined.value = dateInput.value + 'T10:00';
+    } else {
+      combined.value = '';
+    }
+  }
+
+  function setSelected(y, m, d) {
+    selected = { y: y, m: m, d: d };
+    dateInput.value = fmt(y, m, d);
+    selectedLabel.textContent = months[m] + ' ' + d + ', ' + y;
+    syncCombined();
+    render();
+  }
+
+  function render() {
+    monthLabel.textContent = months[viewMonth] + ' ' + viewYear;
+    grid.innerHTML = '';
+    for (var i = 0; i < 7; i++) {
+      var el = document.createElement('div');
+      el.className = 'dow';
+      el.textContent = dows[i];
+      grid.appendChild(el);
+    }
+    var first = new Date(viewYear, viewMonth, 1);
+    var startDow = first.getDay();
+    var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    var prevDays = new Date(viewYear, viewMonth, 0).getDate();
+    var today = new Date();
+    var cells = [];
+    for (var i = 0; i < startDow; i++) {
+      cells.push({ d: prevDays - startDow + 1 + i, other: true, y: viewMonth === 0 ? viewYear - 1 : viewYear, m: viewMonth === 0 ? 11 : viewMonth - 1 });
+    }
+    for (var d = 1; d <= daysInMonth; d++) {
+      cells.push({ d: d, other: false, y: viewYear, m: viewMonth });
+    }
+    while (cells.length % 7 !== 0) {
+      var n = cells.length - (startDow + daysInMonth) + 1;
+      cells.push({ d: n, other: true, y: viewMonth === 11 ? viewYear + 1 : viewYear, m: viewMonth === 11 ? 0 : viewMonth + 1 });
+    }
+    cells.forEach(function (c) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'day';
+      btn.textContent = c.d;
+      if (c.other) btn.classList.add('other');
+      if (!c.other && c.y === today.getFullYear() && c.m === today.getMonth() && c.d === today.getDate()) {
+        btn.classList.add('today');
+      }
+      if (selected && selected.y === c.y && selected.m === c.m && selected.d === c.d) {
+        btn.classList.add('selected');
+      }
+      btn.addEventListener('click', function () {
+        viewYear = c.y;
+        viewMonth = c.m;
+        setSelected(c.y, c.m, c.d);
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  document.getElementById('calPrev').addEventListener('click', function () {
+    viewMonth -= 1;
+    if (viewMonth < 0) { viewMonth = 11; viewYear -= 1; }
+    render();
+  });
+  document.getElementById('calNext').addEventListener('click', function () {
+    viewMonth += 1;
+    if (viewMonth > 11) { viewMonth = 0; viewYear += 1; }
+    render();
+  });
+
+  dateInput.addEventListener('change', function () {
+    if (!dateInput.value) return;
+    var parts = dateInput.value.split('-');
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10) - 1;
+    var d = parseInt(parts[2], 10);
+    viewYear = y;
+    viewMonth = m;
+    setSelected(y, m, d);
+  });
+  timeInput.addEventListener('change', syncCombined);
+
+  document.getElementById('scheduleForm').addEventListener('submit', function () {
+    syncCombined();
+  });
+
+  var now = new Date();
+  viewYear = now.getFullYear();
+  viewMonth = now.getMonth();
+  setSelected(viewYear, viewMonth, now.getDate());
+})();
+</script>
 </body>
 </html>
